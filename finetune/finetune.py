@@ -119,6 +119,7 @@ class FinetuningConfig(object):
         default_factory=lambda: Seq2SeqTrainingArguments(output_dir="./output")
     )
     peft_config: Optional[PeftConfig] = None
+    quantization_config: Optional[dict] = None
     swanlab: Optional[str] = "cloud"
 
     def __post_init__(self):
@@ -324,22 +325,41 @@ def process_batch_eval(
 def load_tokenizer_and_model(
     model_dir: str,
     peft_config: Optional[PeftConfig] = None,
+    quantization_config: Optional[dict] = None,
 ):
     tokenizer = AutoTokenizer.from_pretrained(model_dir, padding_side="left", trust_remote_code=True)
-    if peft_config is not None:
-        model = AutoModelForCausalLM.from_pretrained(
-            model_dir,
-            use_cache=False,
-            torch_dtype=torch.bfloat16,  # Must use BFloat 16
+    
+    # Prepare model loading kwargs
+    model_kwargs = {
+        "use_cache": False,
+        "torch_dtype": torch.bfloat16,  # Must use BFloat 16
+        "trust_remote_code": True,
+    }
+    
+    # Add quantization config if provided
+    if quantization_config:
+        from transformers import BitsAndBytesConfig
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=quantization_config.get("load_in_4bit", False),
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=quantization_config.get("bnb_4bit_use_double_quant", False),
+            bnb_4bit_quant_type=quantization_config.get("bnb_4bit_quant_type", "nf4"),
         )
+        model_kwargs["quantization_config"] = bnb_config
+        model_kwargs["device_map"] = "auto"
+    
+    if peft_config is not None:
+        model = AutoModelForCausalLM.from_pretrained(model_dir, **model_kwargs)
         model = get_peft_model(model, peft_config)
         model.print_trainable_parameters()
+        
+        # Enable gradient checkpointing for QLoRA
+        if quantization_config and quantization_config.get("load_in_4bit", False):
+            model.gradient_checkpointing_enable()
+            model.enable_input_require_grads()
     else:
-        model = AutoModelForCausalLM.from_pretrained(
-            model_dir,
-            use_cache=False,
-            torch_dtype=torch.bfloat16,
-        )
+        model = AutoModelForCausalLM.from_pretrained(model_dir, **model_kwargs)
+    
     return tokenizer, model
 
 
@@ -383,7 +403,11 @@ def main(
     ),
 ):
     ft_config = FinetuningConfig.from_file(config_file)
-    tokenizer, model = load_tokenizer_and_model(model_dir, peft_config=ft_config.peft_config)
+    tokenizer, model = load_tokenizer_and_model(
+        model_dir, 
+        peft_config=ft_config.peft_config,
+        quantization_config=ft_config.quantization_config
+    )
     data_manager = DataManager(data_dir, ft_config.data_config)
 
     train_dataset = data_manager.get_dataset(
