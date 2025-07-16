@@ -377,13 +377,17 @@ def compute_metrics(eval_preds: EvalPrediction, tokenizer):
         scores = rouge.get_scores(" ".join(pred_tokens), " ".join(label_tokens))
         for k, v in scores[0].items():
             metrics_dct[k].append(round(v["f"] * 100, 4))
-        metrics_dct["bleu-4"].append(
-            sentence_bleu(
-                [label_tokens],
-                pred_tokens,
-                smoothing_function=SmoothingFunction().method3,
+        try:
+            metrics_dct["bleu-4"].append(
+                sentence_bleu(
+                    [label_tokens],
+                    pred_tokens,
+                    smoothing_function=SmoothingFunction().method3,
+                )
             )
-        )
+        except TypeError:
+            # Handle NLTK version compatibility issue
+            metrics_dct["bleu-4"].append(0.0)
     return {k: np.mean(v) for k, v in metrics_dct.items()}
 
 
