@@ -21,12 +21,13 @@ class BatchEvaluator:
     """Batch evaluator for large-scale evaluation."""
     
     def __init__(self, base_model_path: str, finetuned_path: str, test_file: str, 
-                 output_dir: str = "evaluation_output", use_4bit: bool = True):
+                 output_dir: str = "evaluation_output", use_4bit: bool = True, max_new_tokens: int = 128):
         self.base_model_path = base_model_path
         self.finetuned_path = finetuned_path
         self.test_file = test_file
         self.output_dir = output_dir
         self.use_4bit = use_4bit
+        self.max_new_tokens = max_new_tokens
         
         # Create output directory
         os.makedirs(output_dir, exist_ok=True)
@@ -156,7 +157,7 @@ class BatchEvaluator:
         with torch.no_grad():
             outputs = self.model.generate(
                 **model_inputs,
-                max_new_tokens=256,
+                max_new_tokens=self.max_new_tokens,
                 do_sample=True,
                 top_p=0.8,
                 temperature=0.6,
@@ -167,6 +168,11 @@ class BatchEvaluator:
         
         generated_ids = outputs[:, model_inputs["input_ids"].shape[1]:]
         response = self.tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+        
+        # Check if response was truncated (reached max_new_tokens)
+        if len(generated_ids[0]) >= self.max_new_tokens:
+            print(f"Warning: Response may have been truncated at {len(generated_ids[0])} tokens")
+        
         return response.strip()
     
     def save_checkpoint(self, results: Dict, batch_num: int):
@@ -642,6 +648,8 @@ def main():
     parser.add_argument('--test-file', '-t', type=str,
                        default="finetune/data/cmcc-34/test.jsonl",
                        help='Path to test file')
+    parser.add_argument('--max-new-tokens', type=int, default=128,
+                       help='Maximum new tokens for generation (default: 128)')
     
     args = parser.parse_args()
     
@@ -663,6 +671,7 @@ def main():
     if args.quick:
         print(f"  Sample Limit: {args.samples}")
     print(f"  Batch Size: {args.batch_size}")
+    print(f"  Max New Tokens: {args.max_new_tokens}")
     print()
     
     # Create evaluator
@@ -671,7 +680,8 @@ def main():
         finetuned_path=FINETUNED_PATH,
         test_file=TEST_FILE,
         output_dir=OUTPUT_DIR,
-        use_4bit=True
+        use_4bit=True,
+        max_new_tokens=args.max_new_tokens
     )
     
     # Load model
