@@ -47,6 +47,7 @@ class BatchEvaluator:
         
         self.tokenizer = None
         self.model = None
+        self.max_new_tokens = 128  # Default value, can be overridden
         
     def load_model(self):
         """Load the fine-tuned model."""
@@ -176,7 +177,7 @@ class BatchEvaluator:
                 with torch.no_grad():
                     outputs = self.model.generate(
                         **model_inputs,
-                        max_new_tokens=256,
+                        max_new_tokens=self.max_new_tokens,
                         do_sample=True,
                         top_p=0.8,
                         temperature=0.6,
@@ -302,7 +303,10 @@ class BatchEvaluator:
                 
                 try:
                     pred_response = self.generate_response(user_message)
-                    pred_intent = self.extract_intent(pred_response)
+                    if pred_response and pred_response.strip():
+                        pred_intent = self.extract_intent(pred_response)
+                    else:
+                        error_msg = "Empty response generated"
                 except Exception as e:
                     print(f"Error on sample {start_idx + i}: {e}")
                     error_msg = str(e)
@@ -321,9 +325,15 @@ class BatchEvaluator:
                         'sample': sample
                     }
                     
-                    # Add error message if there was an exception
+                    # Add error message if there was an exception or empty response
                     if error_msg:
                         failed_sample['error'] = error_msg
+                    elif pred_response is None:
+                        failed_sample['error'] = "No response generated"
+                    elif not pred_response.strip():
+                        failed_sample['error'] = "Empty response generated"
+                    else:
+                        failed_sample['error'] = "Failed to extract intent from response"
                     
                     batch_failed.append(failed_sample)
             
@@ -901,6 +911,8 @@ def main():
     parser.add_argument('--test-file', '-t', type=str,
                        default="finetune/data/cmcc-34/test.jsonl",
                        help='Path to test file')
+    parser.add_argument('--max-new-tokens', type=int, default=128,
+                       help='Maximum number of new tokens to generate (default: 128)')
     
     args = parser.parse_args()
     
@@ -922,6 +934,7 @@ def main():
     if args.quick:
         print(f"  Sample Limit: {args.samples}")
     print(f"  Batch Size: {args.batch_size}")
+    print(f"  Max New Tokens: {args.max_new_tokens}")
     print()
     
     # Create evaluator
@@ -932,6 +945,9 @@ def main():
         output_dir=OUTPUT_DIR,
         use_4bit=True
     )
+    
+    # Set max_new_tokens
+    evaluator.max_new_tokens = args.max_new_tokens
     
     # Load model
     evaluator.load_model()
