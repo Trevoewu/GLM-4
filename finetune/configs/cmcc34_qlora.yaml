@@ -6,7 +6,7 @@ data_config:
 
 combine: True
 freezeV: True
-max_input_length: 1536
+max_input_length: 1024
 max_output_length: 512
 # swanlab: "local"  # set to local if don`t use cloud
 
@@ -50,8 +50,8 @@ training_args:
 peft_config:
   peft_type: LORA
   task_type: CAUSAL_LM
-  r: 32
-  lora_alpha: 128
+  r: 16
+  lora_alpha: 64
   lora_dropout: 0.1
   target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
 
