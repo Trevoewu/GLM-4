@@ -386,8 +386,28 @@ class SystemPromptEvaluator:
             import seaborn as sns
             from sklearn.metrics import confusion_matrix
             
-            # Configure matplotlib for Chinese characters
-            plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans', 'Arial Unicode MS', 'sans-serif']
+            # Configure matplotlib for Chinese characters with better font fallback
+            import matplotlib.font_manager as fm
+            
+            # Try to find a font that supports Chinese characters
+            chinese_fonts = ['SimHei', 'Microsoft YaHei', 'WenQuanYi Micro Hei', 'Noto Sans CJK SC', 'Source Han Sans CN']
+            available_fonts = [f.name for f in fm.fontManager.ttflist]
+            
+            # Find the first available Chinese font
+            selected_font = None
+            for font in chinese_fonts:
+                if font in available_fonts:
+                    selected_font = font
+                    break
+            
+            if selected_font:
+                plt.rcParams['font.sans-serif'] = [selected_font] + plt.rcParams['font.sans-serif']
+                print(f"Using Chinese font: {selected_font}")
+            else:
+                print("Warning: No Chinese font found. Using default font with potential rendering issues.")
+                # Use a font that at least supports basic Unicode
+                plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial Unicode MS', 'sans-serif']
+            
             plt.rcParams['axes.unicode_minus'] = False
             
             # Create confusion matrix
@@ -395,7 +415,13 @@ class SystemPromptEvaluator:
             
             # Get class labels
             unique_classes = sorted(set(results['ground_truth'] + results['predictions']))
-            class_labels = [self.business_types.get(i, f"Class_{i}") for i in unique_classes]
+            
+            # Use English labels if no Chinese font is available
+            if not selected_font:
+                class_labels = [f"Class_{i}" for i in unique_classes]
+                print("Using English class labels due to font limitations")
+            else:
+                class_labels = [self.business_types.get(i, f"Class_{i}") for i in unique_classes]
             
             # Create figure
             plt.figure(figsize=(20, 16))
