@@ -253,9 +253,13 @@ class BatchEvaluator:
                 except Exception as e:
                     print(f"Error on sample {start_idx + i}: {e}")
                     pred_intent = None
+                    pred_response = None
                     batch_failed.append({
                         'index': start_idx + i,
                         'error': str(e),
+                        'predicted_response': pred_response,
+                        'predicted_intent': pred_intent,
+                        'ground_truth': gt_intent,
                         'sample': sample
                     })
                 
@@ -265,7 +269,8 @@ class BatchEvaluator:
                 else:
                     batch_failed.append({
                         'index': start_idx + i,
-                        'predicted': pred_intent,
+                        'predicted_response': pred_response,
+                        'predicted_intent': pred_intent,
                         'ground_truth': gt_intent,
                         'sample': sample
                     })
@@ -376,7 +381,8 @@ class BatchEvaluator:
             failed_entry = {
                 'index': failed.get('index', 'unknown'),
                 'error': failed.get('error', ''),
-                'predicted': failed.get('predicted', None),
+                'predicted_response': failed.get('predicted_response', None),
+                'predicted_intent': failed.get('predicted_intent', None),
                 'ground_truth': failed.get('ground_truth', None),
                 'sample': failed.get('sample', {})
             }
@@ -429,6 +435,10 @@ class BatchEvaluator:
             import matplotlib.pyplot as plt
             import seaborn as sns
             from sklearn.metrics import confusion_matrix
+            
+            # Configure matplotlib for Chinese characters
+            plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans', 'Arial Unicode MS', 'sans-serif']
+            plt.rcParams['axes.unicode_minus'] = False
             
             # Create confusion matrix
             cm = confusion_matrix(results['ground_truth'], results['predictions'])
