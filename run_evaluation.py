@@ -590,11 +590,46 @@ class BatchEvaluator:
 
 def main():
     """Main function for batch evaluation."""
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='GLM-4 CMCC-34 Evaluation Script')
+    parser.add_argument('--quick', '-q', action='store_true', 
+                       help='Quick evaluation with limited samples (default: 100)')
+    parser.add_argument('--samples', '-s', type=int, default=100,
+                       help='Number of samples for quick evaluation (default: 100)')
+    parser.add_argument('--batch-size', '-b', type=int, default=50,
+                       help='Batch size for evaluation (default: 50)')
+    parser.add_argument('--output-dir', '-o', type=str, default="evaluation_output",
+                       help='Output directory for results (default: evaluation_output)')
+    parser.add_argument('--model-path', '-m', type=str, 
+                       default="finetune/output/cmcc34_qlora/checkpoint-5000",
+                       help='Path to fine-tuned model checkpoint')
+    parser.add_argument('--test-file', '-t', type=str,
+                       default="finetune/data/cmcc-34/test.jsonl",
+                       help='Path to test file')
+    
+    args = parser.parse_args()
+    
     # Configuration
     BASE_MODEL_PATH = "THUDM/GLM-4-9B-0414"
-    FINETUNED_PATH = "finetune/output/cmcc34_qlora/checkpoint-5000"
-    TEST_FILE = "finetune/data/cmcc-34/test.jsonl"
-    OUTPUT_DIR = "evaluation_output"
+    FINETUNED_PATH = args.model_path
+    TEST_FILE = args.test_file
+    OUTPUT_DIR = args.output_dir
+    
+    # Add quick suffix to output dir if quick evaluation
+    if args.quick:
+        OUTPUT_DIR = f"{OUTPUT_DIR}_quick"
+    
+    print(f"Evaluation Configuration:")
+    print(f"  Model: {FINETUNED_PATH}")
+    print(f"  Test File: {TEST_FILE}")
+    print(f"  Output Directory: {OUTPUT_DIR}")
+    print(f"  Quick Mode: {args.quick}")
+    if args.quick:
+        print(f"  Sample Limit: {args.samples}")
+    print(f"  Batch Size: {args.batch_size}")
+    print()
     
     # Create evaluator
     evaluator = BatchEvaluator(
@@ -611,10 +646,14 @@ def main():
     # Load test data
     test_data = evaluator.load_test_data()
     
+    # Limit samples for quick evaluation
+    if args.quick:
+        original_size = len(test_data)
+        test_data = test_data[:args.samples]
+        print(f"Quick evaluation: Using {len(test_data)} samples (from {original_size} total)")
+    
     # Batch evaluation
-    # You can adjust batch_size based on your GPU memory
-    # For 24GB GPU, batch_size=50-100 should work well
-    results = evaluator.evaluate_batch(test_data, batch_size=50, start_batch=0)
+    results = evaluator.evaluate_batch(test_data, batch_size=args.batch_size, start_batch=0)
     
     # Print results
     evaluator.print_results(results)
@@ -622,7 +661,8 @@ def main():
     # Save final results
     evaluator.save_final_results(results)
     
-    print("\nBatch evaluation completed!")
+    print(f"\n{'Quick ' if args.quick else ''}Evaluation completed!")
+    print(f"Results saved to: {OUTPUT_DIR}")
 
 
 if __name__ == "__main__":
