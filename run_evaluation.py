@@ -366,8 +366,163 @@ class BatchEvaluator:
             for class_name, metrics in class_metrics[:15]:
                 print(f"{class_name:<30} {metrics['precision']:<10.3f} {metrics['recall']:<10.3f} {metrics['f1-score']:<10.3f} {metrics['support']:<10}")
     
+    def save_failed_predictions(self, results: Dict):
+        """Save failed predictions to a separate file."""
+        failed_predictions_file = os.path.join(self.output_dir, "failed_predictions.json")
+        
+        # Prepare failed predictions for saving
+        failed_data = []
+        for failed in results.get('failed_samples', []):
+            failed_entry = {
+                'index': failed.get('index', 'unknown'),
+                'error': failed.get('error', ''),
+                'predicted': failed.get('predicted', None),
+                'ground_truth': failed.get('ground_truth', None),
+                'sample': failed.get('sample', {})
+            }
+            failed_data.append(failed_entry)
+        
+        with open(failed_predictions_file, 'w', encoding='utf-8') as f:
+            json.dump(failed_data, f, ensure_ascii=False, indent=2)
+        
+        print(f"Failed predictions saved to: {failed_predictions_file}")
+        print(f"Total failed predictions: {len(failed_data)}")
+    
+    def save_error_predictions(self, results: Dict):
+        """Save error predictions (wrong predictions) to a separate file."""
+        if 'predictions' not in results or 'ground_truth' not in results:
+            print("No predictions available for error analysis")
+            return
+        
+        error_predictions_file = os.path.join(self.output_dir, "error_predictions.json")
+        
+        # Find wrong predictions
+        error_data = []
+        predictions = results['predictions']
+        ground_truth = results['ground_truth']
+        
+        for i, (pred, gt) in enumerate(zip(predictions, ground_truth)):
+            if pred != gt:
+                error_entry = {
+                    'index': i,
+                    'predicted_intent': pred,
+                    'predicted_label': self.business_types.get(pred, f"Unknown_{pred}"),
+                    'ground_truth_intent': gt,
+                    'ground_truth_label': self.business_types.get(gt, f"Unknown_{gt}"),
+                    'error_type': 'wrong_prediction'
+                }
+                error_data.append(error_entry)
+        
+        with open(error_predictions_file, 'w', encoding='utf-8') as f:
+            json.dump(error_data, f, ensure_ascii=False, indent=2)
+        
+        print(f"Error predictions saved to: {error_predictions_file}")
+        print(f"Total error predictions: {len(error_data)}")
+    
+    def save_confusion_matrix(self, results: Dict):
+        """Save confusion matrix plot."""
+        if 'predictions' not in results or 'ground_truth' not in results:
+            print("No predictions available for confusion matrix")
+            return
+        
+        try:
+            import matplotlib.pyplot as plt
+            import seaborn as sns
+            from sklearn.metrics import confusion_matrix
+            
+            # Create confusion matrix
+            cm = confusion_matrix(results['ground_truth'], results['predictions'])
+            
+            # Get class labels
+            unique_classes = sorted(set(results['ground_truth'] + results['predictions']))
+            class_labels = [self.business_types.get(i, f"Class_{i}") for i in unique_classes]
+            
+            # Create figure
+            plt.figure(figsize=(20, 16))
+            
+            # Plot confusion matrix
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                       xticklabels=class_labels, yticklabels=class_labels)
+            plt.title('Confusion Matrix - CMCC-34 Intent Classification', fontsize=16, pad=20)
+            plt.xlabel('Predicted Intent', fontsize=14)
+            plt.ylabel('True Intent', fontsize=14)
+            plt.xticks(rotation=45, ha='right')
+            plt.yticks(rotation=0)
+            
+            # Adjust layout
+            plt.tight_layout()
+            
+            # Save plot
+            confusion_matrix_file = os.path.join(self.output_dir, "confusion_matrix.png")
+            plt.savefig(confusion_matrix_file, dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            print(f"Confusion matrix saved to: {confusion_matrix_file}")
+            
+        except ImportError:
+            print("matplotlib or seaborn not available. Skipping confusion matrix plot.")
+        except Exception as e:
+            print(f"Error creating confusion matrix: {e}")
+    
+    def save_detailed_analysis(self, results: Dict):
+        """Save detailed analysis including per-class performance."""
+        analysis_file = os.path.join(self.output_dir, "detailed_analysis.json")
+        
+        analysis = {
+            'summary': {
+                'total_samples': results.get('total_samples', 0),
+                'successful_predictions': results.get('successful_predictions', 0),
+                'failed_predictions': results.get('failed_predictions', 0),
+                'accuracy': results.get('accuracy', 0.0),
+                'f1_macro': results.get('f1_macro', 0.0),
+                'f1_weighted': results.get('f1_weighted', 0.0)
+            },
+            'per_class_performance': {},
+            'error_analysis': {
+                'most_confused_pairs': [],
+                'class_with_most_errors': None,
+                'class_with_least_errors': None
+            }
+        }
+        
+        # Add per-class performance
+        if 'classification_report' in results:
+            for class_name, metrics in results['classification_report'].items():
+                if isinstance(metrics, dict):
+                    analysis['per_class_performance'][class_name] = {
+                        'precision': float(metrics.get('precision', 0.0)),
+                        'recall': float(metrics.get('recall', 0.0)),
+                        'f1_score': float(metrics.get('f1-score', 0.0)),
+                        'support': int(metrics.get('support', 0))
+                    }
+        
+        # Find most confused pairs
+        if 'predictions' in results and 'ground_truth' in results:
+            from collections import Counter
+            error_pairs = []
+            for pred, gt in zip(results['predictions'], results['ground_truth']):
+                if pred != gt:
+                    error_pairs.append((gt, pred))
+            
+            error_pair_counts = Counter(error_pairs)
+            most_confused = error_pair_counts.most_common(10)
+            
+            analysis['error_analysis']['most_confused_pairs'] = [
+                {
+                    'true_intent': self.business_types.get(pair[0], f"Class_{pair[0]}"),
+                    'predicted_intent': self.business_types.get(pair[1], f"Class_{pair[1]}"),
+                    'count': count
+                }
+                for pair, count in most_confused
+            ]
+        
+        with open(analysis_file, 'w', encoding='utf-8') as f:
+            json.dump(analysis, f, ensure_ascii=False, indent=2)
+        
+        print(f"Detailed analysis saved to: {analysis_file}")
+    
     def save_final_results(self, results: Dict):
-        """Save final evaluation results."""
+        """Save final evaluation results and additional analysis."""
         final_results_file = os.path.join(self.output_dir, "final_evaluation_results.json")
         
         # Prepare results for saving
@@ -386,6 +541,12 @@ class BatchEvaluator:
             json.dump(save_results, f, ensure_ascii=False, indent=2)
         
         print(f"Final results saved to: {final_results_file}")
+        
+        # Save additional analysis
+        self.save_failed_predictions(results)
+        self.save_error_predictions(results)
+        self.save_confusion_matrix(results)
+        self.save_detailed_analysis(results)
 
 
 def main():

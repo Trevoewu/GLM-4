@@ -42,7 +42,7 @@ glm4_data = {
 ### 2. Training Configuration
 
 **Optimized Settings:**
-- `max_input_length: 2048` (increased to accommodate system prompt)
+- `max_input_length: 1024` (increased to accommodate system prompt)
 - `max_output_length: 256` (reduced since we only need intent output)
 - `max_new_tokens: 128` (reduced for generation)
 
@@ -168,14 +168,43 @@ generation_config:
 - **LoRA Config:** r=16, alpha=64, dropout=0.1
 - **Target Modules:** q_proj, k_proj, v_proj, o_proj
 
-## Evaluation Metrics
+## Evaluation Metrics and Analysis
 
-The evaluation script provides:
+The evaluation scripts now provide comprehensive analysis:
+
+### Core Metrics
 - **Accuracy:** Overall classification accuracy
 - **F1 Scores:** Macro and weighted F1 scores
 - **Per-class metrics:** Precision, recall, F1-score for each intent
 - **Performance metrics:** Evaluation time, success rate
-- **Error analysis:** Failed samples with detailed information
+
+### Detailed Analysis Files
+The evaluation automatically saves the following files:
+
+1. **`failed_predictions.json`** - Samples where prediction failed completely
+   - Index, error messages, predicted vs ground truth
+   - Original sample data for debugging
+
+2. **`error_predictions.json`** - Wrong predictions (successful but incorrect)
+   - Predicted intent vs ground truth intent
+   - Intent labels for easy interpretation
+
+3. **`confusion_matrix.png`** - Visual confusion matrix plot
+   - High-resolution (300 DPI) heatmap
+   - Shows all 34 intent classes
+   - Easy identification of most confused pairs
+
+4. **`detailed_analysis.json`** - Comprehensive analysis
+   - Summary statistics
+   - Per-class performance breakdown
+   - Most confused intent pairs
+   - Error patterns and trends
+
+### Installation
+To enable confusion matrix plots, install visualization dependencies:
+```bash
+python install_evaluation_deps.py
+```
 
 ## Migration Guide
 
