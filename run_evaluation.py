@@ -361,6 +361,11 @@ class BatchEvaluator:
                 tokens = self.tokenizer.encode(user_message)
                 failed_token_lengths.append(len(tokens))
         
+        # Store token lengths for failed samples in the failed_samples data
+        for i, failed in enumerate(failed_samples):
+            if i < len(failed_token_lengths):
+                failed['token_length'] = failed_token_lengths[i]
+        
         # Calculate final metrics
         if len(all_predictions) > 0:
             accuracy = accuracy_score(all_ground_truth, all_predictions)
@@ -369,7 +374,7 @@ class BatchEvaluator:
             
             # Classification report
             class_names = [self.business_types.get(i, f"Class_{i}") for i in sorted(set(all_ground_truth + all_predictions))]
-            report = classification_report(all_ground_truth, all_predictions, target_names=class_names, output_dict=True)
+            report = classification_report(all_ground_truth, all_predictions, target_names=class_names, output_dict=True, zero_division=0)
             
             results = {
                 'accuracy': accuracy,
@@ -384,6 +389,7 @@ class BatchEvaluator:
                 'predictions': all_predictions,
                 'ground_truth': all_ground_truth,
                 'failed_samples': failed_samples,
+                'test_data': test_data,  # Store test data for token analysis
                 'token_analysis': {
                     'all_samples': {
                         'mean': sum(token_lengths) / len(token_lengths),
@@ -412,6 +418,7 @@ class BatchEvaluator:
                 'evaluation_time': evaluation_time,
                 'avg_time_per_sample': evaluation_time / len(test_data),
                 'failed_samples': failed_samples,
+                'test_data': test_data,  # Store test data for token analysis
                 'token_analysis': {
                     'all_samples': {
                         'mean': sum(token_lengths) / len(token_lengths),
@@ -502,6 +509,7 @@ class BatchEvaluator:
                 'predicted_response': pred_response,
                 'predicted_intent': failed.get('predicted_intent', None),
                 'ground_truth': failed.get('ground_truth', None),
+                'token_length': failed.get('token_length', None),
                 'sample': failed.get('sample', {})
             }
             failed_data.append(failed_entry)
@@ -650,18 +658,39 @@ class BatchEvaluator:
             all_stats = token_analysis['all_samples']
             failed_stats = token_analysis['failed_samples']
             
+            # Get actual token length data for plotting
+            all_token_lengths = []
+            failed_token_lengths = []
+            
+            # Extract token lengths from test data and failed samples
+            for sample in results.get('test_data', []):
+                if len(sample["messages"]) == 3:
+                    user_message = sample["messages"][1]["content"]
+                else:
+                    user_message = sample["messages"][0]["content"]
+                tokens = self.tokenizer.encode(user_message)
+                all_token_lengths.append(len(tokens))
+            
+            for failed in results.get('failed_samples', []):
+                if 'token_length' in failed:
+                    failed_token_lengths.append(failed['token_length'])
+            
             # Plot 1: Token length distribution (all samples)
-            ax1.hist([all_stats['mean']], bins=20, alpha=0.7, color='blue', label='All Samples')
-            ax1.axvline(all_stats['mean'], color='red', linestyle='--', label=f'Mean: {all_stats["mean"]:.1f}')
-            ax1.axvline(all_stats['median'], color='green', linestyle='--', label=f'Median: {all_stats["median"]:.1f}')
-            ax1.set_title('Token Length Distribution (All Samples)')
-            ax1.set_xlabel('Token Count')
-            ax1.set_ylabel('Frequency')
-            ax1.legend()
+            if all_token_lengths:
+                ax1.hist(all_token_lengths, bins=min(20, len(all_token_lengths)//5), alpha=0.7, color='blue', label='All Samples')
+                ax1.axvline(all_stats['mean'], color='red', linestyle='--', label=f'Mean: {all_stats["mean"]:.1f}')
+                ax1.axvline(all_stats['median'], color='green', linestyle='--', label=f'Median: {all_stats["median"]:.1f}')
+                ax1.set_title('Token Length Distribution (All Samples)')
+                ax1.set_xlabel('Token Count')
+                ax1.set_ylabel('Frequency')
+                ax1.legend()
+            else:
+                ax1.text(0.5, 0.5, 'No token data available', ha='center', va='center', transform=ax1.transAxes)
+                ax1.set_title('Token Length Distribution (All Samples)')
             
             # Plot 2: Token length distribution (failed samples)
-            if failed_stats['mean'] > 0:
-                ax2.hist([failed_stats['mean']], bins=20, alpha=0.7, color='red', label='Failed Samples')
+            if failed_token_lengths:
+                ax2.hist(failed_token_lengths, bins=min(20, max(1, len(failed_token_lengths)//3)), alpha=0.7, color='red', label='Failed Samples')
                 ax2.axvline(failed_stats['mean'], color='red', linestyle='--', label=f'Mean: {failed_stats["mean"]:.1f}')
                 ax2.axvline(failed_stats['median'], color='green', linestyle='--', label=f'Median: {failed_stats["median"]:.1f}')
                 ax2.set_title('Token Length Distribution (Failed Samples)')
@@ -673,14 +702,14 @@ class BatchEvaluator:
                 ax2.set_title('Token Length Distribution (Failed Samples)')
             
             # Plot 3: Comparison box plot
-            if failed_stats['mean'] > 0:
-                data = [all_stats['mean'], failed_stats['mean']]
+            if all_token_lengths and failed_token_lengths:
+                data = [all_token_lengths, failed_token_lengths]
                 labels = ['All Samples', 'Failed Samples']
                 ax3.boxplot(data, labels=labels)
                 ax3.set_title('Token Length Comparison')
                 ax3.set_ylabel('Token Count')
             else:
-                ax3.text(0.5, 0.5, 'No failed samples for comparison', ha='center', va='center', transform=ax3.transAxes)
+                ax3.text(0.5, 0.5, 'No data for comparison', ha='center', va='center', transform=ax3.transAxes)
                 ax3.set_title('Token Length Comparison')
             
             # Plot 4: Statistics summary
