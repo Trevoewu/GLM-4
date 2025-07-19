@@ -21,13 +21,12 @@ class BatchEvaluator:
     """Batch evaluator for large-scale evaluation."""
     
     def __init__(self, base_model_path: str, finetuned_path: str, test_file: str, 
-                 output_dir: str = "evaluation_output", use_4bit: bool = True, max_new_tokens: int = 128):
+                 output_dir: str = "evaluation_output", use_4bit: bool = True):
         self.base_model_path = base_model_path
         self.finetuned_path = finetuned_path
         self.test_file = test_file
         self.output_dir = output_dir
         self.use_4bit = use_4bit
-        self.max_new_tokens = max_new_tokens
         
         # Create output directory
         os.makedirs(output_dir, exist_ok=True)
@@ -122,8 +121,8 @@ class BatchEvaluator:
         
         return None
     
-    def generate_response(self, user_content: str) -> str:
-        """Generate response for a user message with system prompt."""
+    def generate_response(self, user_content: str, max_retries: int = 2) -> str:
+        """Generate response for a user message with system prompt and retry logic."""
         # System prompt - same as used in training
         system_prompt = """你是客服意图识别专家。分析对话内容，判断用户最终意图。
 
@@ -145,35 +144,65 @@ class BatchEvaluator:
 输出格式：
 意图：[选择最合适的意图]"""
         
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content}
-        ]
+        # Try with original content first
+        current_content = user_content
+        last_error = None
         
-        model_inputs = self.tokenizer.apply_chat_template(
-            messages, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt"
-        ).to(self.model.device)
+        for attempt in range(max_retries + 1):
+            try:
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": current_content}
+                ]
+                
+                model_inputs = self.tokenizer.apply_chat_template(
+                    messages, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt"
+                ).to(self.model.device)
+                
+                # Check input token length
+                input_tokens = model_inputs["input_ids"].shape[1]
+                if input_tokens > 2048:  # GLM-4 context limit
+                    print(f"Warning: Input too long ({input_tokens} tokens), truncating...")
+                    # Truncate the user content to fit within context
+                    max_user_tokens = 2048 - len(self.tokenizer.encode(system_prompt))
+                    truncated_content = self.tokenizer.decode(
+                        self.tokenizer.encode(current_content)[:max_user_tokens], 
+                        skip_special_tokens=True
+                    )
+                    current_content = truncated_content
+                    continue
+                
+                with torch.no_grad():
+                    outputs = self.model.generate(
+                        **model_inputs,
+                        max_new_tokens=256,
+                        do_sample=True,
+                        top_p=0.8,
+                        temperature=0.6,
+                        repetition_penalty=1.2,
+                        eos_token_id=self.model.config.eos_token_id,
+                        pad_token_id=self.tokenizer.pad_token_id,
+                    )
+                
+                generated_ids = outputs[:, model_inputs["input_ids"].shape[1]:]
+                response = self.tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+                return response.strip()
+                
+            except Exception as e:
+                last_error = str(e)
+                if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
+                    print(f"Memory error on attempt {attempt + 1}, trying with truncated content...")
+                    # Truncate content for next attempt
+                    if attempt < max_retries:
+                        # Truncate to 80% of current length
+                        current_content = current_content[:int(len(current_content) * 0.8)]
+                    else:
+                        raise e
+                else:
+                    raise e
         
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **model_inputs,
-                max_new_tokens=self.max_new_tokens,
-                do_sample=True,
-                top_p=0.8,
-                temperature=0.6,
-                repetition_penalty=1.2,
-                eos_token_id=self.model.config.eos_token_id,
-                pad_token_id=self.tokenizer.pad_token_id,
-            )
-        
-        generated_ids = outputs[:, model_inputs["input_ids"].shape[1]:]
-        response = self.tokenizer.decode(generated_ids[0], skip_special_tokens=True)
-        
-        # Check if response was truncated (reached max_new_tokens)
-        if len(generated_ids[0]) >= self.max_new_tokens:
-            print(f"Warning: Response may have been truncated at {len(generated_ids[0])} tokens")
-        
-        return response.strip()
+        # If all attempts failed
+        raise Exception(f"All {max_retries + 1} attempts failed. Last error: {last_error}")
     
     def save_checkpoint(self, results: Dict, batch_num: int):
         """Save evaluation checkpoint."""
@@ -306,6 +335,32 @@ class BatchEvaluator:
         
         evaluation_time = time.time() - start_time
         
+        # Analyze token distribution
+        token_lengths = []
+        failed_token_lengths = []
+        
+        for sample in test_data:
+            if len(sample["messages"]) == 3:
+                user_message = sample["messages"][1]["content"]
+            else:
+                user_message = sample["messages"][0]["content"]
+            
+            # Count tokens in user message
+            tokens = self.tokenizer.encode(user_message)
+            token_lengths.append(len(tokens))
+        
+        # Analyze failed samples token lengths
+        for failed in failed_samples:
+            if 'sample' in failed:
+                sample = failed['sample']
+                if len(sample["messages"]) == 3:
+                    user_message = sample["messages"][1]["content"]
+                else:
+                    user_message = sample["messages"][0]["content"]
+                
+                tokens = self.tokenizer.encode(user_message)
+                failed_token_lengths.append(len(tokens))
+        
         # Calculate final metrics
         if len(all_predictions) > 0:
             accuracy = accuracy_score(all_ground_truth, all_predictions)
@@ -328,7 +383,23 @@ class BatchEvaluator:
                 'classification_report': report,
                 'predictions': all_predictions,
                 'ground_truth': all_ground_truth,
-                'failed_samples': failed_samples
+                'failed_samples': failed_samples,
+                'token_analysis': {
+                    'all_samples': {
+                        'mean': sum(token_lengths) / len(token_lengths),
+                        'median': sorted(token_lengths)[len(token_lengths)//2],
+                        'max': max(token_lengths),
+                        'min': min(token_lengths),
+                        'std': (sum((x - sum(token_lengths)/len(token_lengths))**2 for x in token_lengths) / len(token_lengths))**0.5
+                    },
+                    'failed_samples': {
+                        'mean': sum(failed_token_lengths) / len(failed_token_lengths) if failed_token_lengths else 0,
+                        'median': sorted(failed_token_lengths)[len(failed_token_lengths)//2] if failed_token_lengths else 0,
+                        'max': max(failed_token_lengths) if failed_token_lengths else 0,
+                        'min': min(failed_token_lengths) if failed_token_lengths else 0,
+                        'std': (sum((x - sum(failed_token_lengths)/len(failed_token_lengths))**2 for x in failed_token_lengths) / len(failed_token_lengths))**0.5 if failed_token_lengths else 0
+                    }
+                }
             }
         else:
             results = {
@@ -340,7 +411,23 @@ class BatchEvaluator:
                 'failed_predictions': len(failed_samples),
                 'evaluation_time': evaluation_time,
                 'avg_time_per_sample': evaluation_time / len(test_data),
-                'failed_samples': failed_samples
+                'failed_samples': failed_samples,
+                'token_analysis': {
+                    'all_samples': {
+                        'mean': sum(token_lengths) / len(token_lengths),
+                        'median': sorted(token_lengths)[len(token_lengths)//2],
+                        'max': max(token_lengths),
+                        'min': min(token_lengths),
+                        'std': (sum((x - sum(token_lengths)/len(token_lengths))**2 for x in token_lengths) / len(token_lengths))**0.5
+                    },
+                    'failed_samples': {
+                        'mean': sum(failed_token_lengths) / len(failed_token_lengths) if failed_token_lengths else 0,
+                        'median': sorted(failed_token_lengths)[len(failed_token_lengths)//2] if failed_token_lengths else 0,
+                        'max': max(failed_token_lengths) if failed_token_lengths else 0,
+                        'min': min(failed_token_lengths) if failed_token_lengths else 0,
+                        'std': (sum((x - sum(failed_token_lengths)/len(failed_token_lengths))**2 for x in failed_token_lengths) / len(failed_token_lengths))**0.5 if failed_token_lengths else 0
+                    }
+                }
             }
         
         return results
@@ -362,6 +449,23 @@ class BatchEvaluator:
         print(f"Accuracy: {results['accuracy']:.4f}")
         print(f"F1 Score (Macro): {results['f1_macro']:.4f}")
         print(f"F1 Score (Weighted): {results['f1_weighted']:.4f}")
+        
+        # Print token analysis if available
+        if 'token_analysis' in results:
+            print("\nToken Analysis:")
+            token_analysis = results['token_analysis']
+            all_stats = token_analysis['all_samples']
+            failed_stats = token_analysis['failed_samples']
+            
+            print(f"All Samples - Mean: {all_stats['mean']:.1f}, Median: {all_stats['median']:.1f}, Max: {all_stats['max']:.1f}")
+            if failed_stats['mean'] > 0:
+                print(f"Failed Samples - Mean: {failed_stats['mean']:.1f}, Median: {failed_stats['median']:.1f}, Max: {failed_stats['max']:.1f}")
+                if failed_stats['mean'] > all_stats['mean'] * 1.2:
+                    print("⚠️  Failed samples are significantly longer than average - token length may be causing failures")
+                else:
+                    print("✅ Failed samples are not significantly longer than average")
+            else:
+                print("✅ No failed samples to analyze")
         
         if 'classification_report' in results:
             print("\nTop 15 Classes by Support:")
@@ -514,6 +618,111 @@ class BatchEvaluator:
         except Exception as e:
             print(f"Error creating confusion matrix: {e}")
     
+    def save_token_analysis(self, results: Dict):
+        """Save token distribution analysis and plots."""
+        if 'token_analysis' not in results:
+            print("No token analysis available")
+            return
+        
+        try:
+            import matplotlib.pyplot as plt
+            import numpy as np
+            
+            # Configure matplotlib for Chinese characters
+            import matplotlib.font_manager as fm
+            chinese_fonts = ['WenQuanYi Micro Hei', 'Noto Sans CJK SC', 'Noto Sans CJK JP', 'SimHei', 'Microsoft YaHei', 'Source Han Sans CN']
+            available_fonts = [f.name for f in fm.fontManager.ttflist]
+            selected_font = None
+            for font in chinese_fonts:
+                if font in available_fonts:
+                    selected_font = font
+                    break
+            
+            if selected_font:
+                plt.rcParams['font.sans-serif'] = [selected_font] + plt.rcParams['font.sans-serif']
+            plt.rcParams['axes.unicode_minus'] = False
+            
+            # Create figure with subplots
+            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
+            
+            # Get token data
+            token_analysis = results['token_analysis']
+            all_stats = token_analysis['all_samples']
+            failed_stats = token_analysis['failed_samples']
+            
+            # Plot 1: Token length distribution (all samples)
+            ax1.hist([all_stats['mean']], bins=20, alpha=0.7, color='blue', label='All Samples')
+            ax1.axvline(all_stats['mean'], color='red', linestyle='--', label=f'Mean: {all_stats["mean"]:.1f}')
+            ax1.axvline(all_stats['median'], color='green', linestyle='--', label=f'Median: {all_stats["median"]:.1f}')
+            ax1.set_title('Token Length Distribution (All Samples)')
+            ax1.set_xlabel('Token Count')
+            ax1.set_ylabel('Frequency')
+            ax1.legend()
+            
+            # Plot 2: Token length distribution (failed samples)
+            if failed_stats['mean'] > 0:
+                ax2.hist([failed_stats['mean']], bins=20, alpha=0.7, color='red', label='Failed Samples')
+                ax2.axvline(failed_stats['mean'], color='red', linestyle='--', label=f'Mean: {failed_stats["mean"]:.1f}')
+                ax2.axvline(failed_stats['median'], color='green', linestyle='--', label=f'Median: {failed_stats["median"]:.1f}')
+                ax2.set_title('Token Length Distribution (Failed Samples)')
+                ax2.set_xlabel('Token Count')
+                ax2.set_ylabel('Frequency')
+                ax2.legend()
+            else:
+                ax2.text(0.5, 0.5, 'No failed samples', ha='center', va='center', transform=ax2.transAxes)
+                ax2.set_title('Token Length Distribution (Failed Samples)')
+            
+            # Plot 3: Comparison box plot
+            if failed_stats['mean'] > 0:
+                data = [all_stats['mean'], failed_stats['mean']]
+                labels = ['All Samples', 'Failed Samples']
+                ax3.boxplot(data, labels=labels)
+                ax3.set_title('Token Length Comparison')
+                ax3.set_ylabel('Token Count')
+            else:
+                ax3.text(0.5, 0.5, 'No failed samples for comparison', ha='center', va='center', transform=ax3.transAxes)
+                ax3.set_title('Token Length Comparison')
+            
+            # Plot 4: Statistics summary
+            stats_text = f"""Token Analysis Summary
+
+All Samples:
+- Mean: {all_stats['mean']:.1f}
+- Median: {all_stats['median']:.1f}
+- Max: {all_stats['max']:.1f}
+- Min: {all_stats['min']:.1f}
+- Std: {all_stats['std']:.1f}
+
+Failed Samples:
+- Mean: {failed_stats['mean']:.1f}
+- Median: {failed_stats['median']:.1f}
+- Max: {failed_stats['max']:.1f}
+- Min: {failed_stats['min']:.1f}
+- Std: {failed_stats['std']:.1f}
+
+Analysis:
+- Failed samples are {'longer' if failed_stats['mean'] > all_stats['mean'] else 'shorter'} than average
+- {'Token length may be causing failures' if failed_stats['mean'] > all_stats['mean'] * 1.2 else 'Token length unlikely to be the main cause'}"""
+            
+            ax4.text(0.05, 0.95, stats_text, transform=ax4.transAxes, fontsize=10, 
+                    verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+            ax4.set_title('Token Analysis Summary')
+            ax4.axis('off')
+            
+            plt.tight_layout()
+            
+            # Save plot
+            token_analysis_file = os.path.join(self.output_dir, "token_analysis.png")
+            plt.savefig(token_analysis_file, dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            print(f"Token analysis plot saved to: {token_analysis_file}")
+            
+        except ImportError:
+            print("matplotlib not available. Skipping token analysis plot.")
+        except Exception as e:
+            print(f"Error creating token analysis plot: {e}")
+    
     def save_detailed_analysis(self, results: Dict):
         """Save detailed analysis including per-class performance."""
         analysis_file = os.path.join(self.output_dir, "detailed_analysis.json")
@@ -625,6 +834,7 @@ class BatchEvaluator:
         self.save_failed_predictions(results)
         self.save_error_predictions(results)
         self.save_confusion_matrix(results)
+        self.save_token_analysis(results)
         self.save_detailed_analysis(results)
 
 
@@ -648,8 +858,6 @@ def main():
     parser.add_argument('--test-file', '-t', type=str,
                        default="finetune/data/cmcc-34/test.jsonl",
                        help='Path to test file')
-    parser.add_argument('--max-new-tokens', type=int, default=128,
-                       help='Maximum new tokens for generation (default: 128)')
     
     args = parser.parse_args()
     
@@ -671,7 +879,6 @@ def main():
     if args.quick:
         print(f"  Sample Limit: {args.samples}")
     print(f"  Batch Size: {args.batch_size}")
-    print(f"  Max New Tokens: {args.max_new_tokens}")
     print()
     
     # Create evaluator
@@ -680,8 +887,7 @@ def main():
         finetuned_path=FINETUNED_PATH,
         test_file=TEST_FILE,
         output_dir=OUTPUT_DIR,
-        use_4bit=True,
-        max_new_tokens=args.max_new_tokens
+        use_4bit=True
     )
     
     # Load model

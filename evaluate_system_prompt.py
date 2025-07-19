@@ -22,13 +22,12 @@ class SystemPromptEvaluator:
     """Evaluator for system prompt optimized model."""
     
     def __init__(self, base_model_path: str, finetuned_path: str, test_file: str, 
-                 output_dir: str = "evaluation_output_system_prompt", use_4bit: bool = True, max_new_tokens: int = 128):
+                 output_dir: str = "evaluation_output_system_prompt", use_4bit: bool = True):
         self.base_model_path = base_model_path
         self.finetuned_path = finetuned_path
         self.test_file = test_file
         self.output_dir = output_dir
         self.use_4bit = use_4bit
-        self.max_new_tokens = max_new_tokens
         
         # Create output directory
         os.makedirs(output_dir, exist_ok=True)
@@ -144,37 +143,67 @@ class SystemPromptEvaluator:
         
         return None
     
-    def generate_response(self, user_content: str) -> str:
-        """Generate response for a user message with system prompt."""
-        messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": user_content}
-        ]
+    def generate_response(self, user_content: str, max_retries: int = 2) -> str:
+        """Generate response for a user message with system prompt and retry logic."""
+        # Try with original content first
+        current_content = user_content
+        last_error = None
         
-        model_inputs = self.tokenizer.apply_chat_template(
-            messages, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt"
-        ).to(self.model.device)
+        for attempt in range(max_retries + 1):
+            try:
+                messages = [
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": current_content}
+                ]
+                
+                model_inputs = self.tokenizer.apply_chat_template(
+                    messages, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt"
+                ).to(self.model.device)
+                
+                # Check input token length
+                input_tokens = model_inputs["input_ids"].shape[1]
+                if input_tokens > 2048:  # GLM-4 context limit
+                    print(f"Warning: Input too long ({input_tokens} tokens), truncating...")
+                    # Truncate the user content to fit within context
+                    max_user_tokens = 2048 - len(self.tokenizer.encode(self.system_prompt))
+                    truncated_content = self.tokenizer.decode(
+                        self.tokenizer.encode(current_content)[:max_user_tokens], 
+                        skip_special_tokens=True
+                    )
+                    current_content = truncated_content
+                    continue
+                
+                with torch.no_grad():
+                    outputs = self.model.generate(
+                        **model_inputs,
+                        max_new_tokens=1024,  # increase for intent classification
+                        do_sample=True,
+                        top_p=0.8,
+                        temperature=0.6,
+                        repetition_penalty=1.2,
+                        eos_token_id=self.model.config.eos_token_id,
+                        pad_token_id=self.tokenizer.pad_token_id,
+                    )
+                
+                generated_ids = outputs[:, model_inputs["input_ids"].shape[1]:]
+                response = self.tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+                return response.strip()
+                
+            except Exception as e:
+                last_error = str(e)
+                if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
+                    print(f"Memory error on attempt {attempt + 1}, trying with truncated content...")
+                    # Truncate content for next attempt
+                    if attempt < max_retries:
+                        # Truncate to 80% of current length
+                        current_content = current_content[:int(len(current_content) * 0.8)]
+                    else:
+                        raise e
+                else:
+                    raise e
         
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **model_inputs,
-                max_new_tokens=self.max_new_tokens,
-                do_sample=True,
-                top_p=0.8,
-                temperature=0.6,
-                repetition_penalty=1.2,
-                eos_token_id=self.model.config.eos_token_id,
-                pad_token_id=self.tokenizer.pad_token_id,
-            )
-        
-        generated_ids = outputs[:, model_inputs["input_ids"].shape[1]:]
-        response = self.tokenizer.decode(generated_ids[0], skip_special_tokens=True)
-        
-        # Check if response was truncated (reached max_new_tokens)
-        if len(generated_ids[0]) >= self.max_new_tokens:
-            print(f"Warning: Response may have been truncated at {len(generated_ids[0])} tokens")
-        
-        return response.strip()
+        # If all attempts failed
+        raise Exception(f"All {max_retries + 1} attempts failed. Last error: {last_error}")
     
     def evaluate_batch(self, test_data: List[Dict], batch_size: int = 50) -> Dict:
         """Evaluate data in batches."""
@@ -598,8 +627,6 @@ def main():
     parser.add_argument('--test-file', '-t', type=str,
                        default="finetune/data/cmcc-34/test.jsonl",
                        help='Path to test file')
-    parser.add_argument('--max-new-tokens', type=int, default=128,
-                       help='Maximum new tokens for generation (default: 128)')
     
     args = parser.parse_args()
     
@@ -621,7 +648,6 @@ def main():
     if args.quick:
         print(f"  Sample Limit: {args.samples}")
     print(f"  Batch Size: {args.batch_size}")
-    print(f"  Max New Tokens: {args.max_new_tokens}")
     print()
     
     # Create evaluator
@@ -630,8 +656,7 @@ def main():
         finetuned_path=FINETUNED_PATH,
         test_file=TEST_FILE,
         output_dir=OUTPUT_DIR,
-        use_4bit=True,
-        max_new_tokens=args.max_new_tokens
+        use_4bit=True
     )
     
     # Load model
