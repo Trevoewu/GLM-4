@@ -207,33 +207,36 @@ class SystemPromptEvaluator:
                 gt_intent = self.extract_intent(assistant_message)
                 
                 # Generate prediction
+                pred_response = None
+                pred_intent = None
+                error_msg = None
+                
                 try:
                     pred_response = self.generate_response(user_message)
                     pred_intent = self.extract_intent(pred_response)
                 except Exception as e:
                     print(f"Error on sample {start_idx + i}: {e}")
-                    pred_intent = None
-                    pred_response = None
-                    batch_failed.append({
-                        'index': start_idx + i,
-                        'error': str(e),
-                        'predicted_response': pred_response,
-                        'predicted_intent': pred_intent,
-                        'ground_truth': gt_intent,
-                        'sample': sample
-                    })
+                    error_msg = str(e)
                 
+                # Check if prediction was successful
                 if pred_intent is not None and gt_intent is not None:
                     batch_predictions.append(pred_intent)
                     batch_ground_truth.append(gt_intent)
                 else:
-                    batch_failed.append({
+                    # Add to failed samples with full information
+                    failed_sample = {
                         'index': start_idx + i,
                         'predicted_response': pred_response,
                         'predicted_intent': pred_intent,
                         'ground_truth': gt_intent,
                         'sample': sample
-                    })
+                    }
+                    
+                    # Add error message if there was an exception
+                    if error_msg:
+                        failed_sample['error'] = error_msg
+                    
+                    batch_failed.append(failed_sample)
             
             # Accumulate results
             all_predictions.extend(batch_predictions)
@@ -328,10 +331,15 @@ class SystemPromptEvaluator:
         # Prepare failed predictions for saving
         failed_data = []
         for failed in results.get('failed_samples', []):
+            # Get predicted response, handle empty strings
+            pred_response = failed.get('predicted_response', None)
+            if pred_response == "":
+                pred_response = None
+            
             failed_entry = {
                 'index': failed.get('index', 'unknown'),
                 'error': failed.get('error', ''),
-                'predicted_response': failed.get('predicted_response', None),
+                'predicted_response': pred_response,
                 'predicted_intent': failed.get('predicted_intent', None),
                 'ground_truth': failed.get('ground_truth', None),
                 'sample': failed.get('sample', {})
@@ -390,7 +398,7 @@ class SystemPromptEvaluator:
             import matplotlib.font_manager as fm
             
             # Try to find a font that supports Chinese characters
-            chinese_fonts = ['SimHei', 'Microsoft YaHei', 'WenQuanYi Micro Hei', 'Noto Sans CJK SC', 'Source Han Sans CN']
+            chinese_fonts = ['WenQuanYi Micro Hei', 'Noto Sans CJK SC', 'Noto Sans CJK JP', 'SimHei', 'Microsoft YaHei', 'Source Han Sans CN']
             available_fonts = [f.name for f in fm.fontManager.ttflist]
             
             # Find the first available Chinese font
