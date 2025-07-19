@@ -146,6 +146,7 @@ class BatchEvaluator:
         
         # Try with original content first
         current_content = user_content
+        original_length = len(user_content)
         last_error = None
         
         for attempt in range(max_retries + 1):
@@ -162,7 +163,7 @@ class BatchEvaluator:
                 # Check input token length
                 input_tokens = model_inputs["input_ids"].shape[1]
                 if input_tokens > 2048:  # GLM-4 context limit
-                    print(f"Warning: Input too long ({input_tokens} tokens), truncating...")
+                    print(f"⚠️  Input too long ({input_tokens} tokens), truncating... (attempt {attempt + 1}/{max_retries + 1})")
                     # Truncate the user content to fit within context
                     max_user_tokens = 2048 - len(self.tokenizer.encode(system_prompt))
                     truncated_content = self.tokenizer.decode(
@@ -186,22 +187,35 @@ class BatchEvaluator:
                 
                 generated_ids = outputs[:, model_inputs["input_ids"].shape[1]:]
                 response = self.tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+                
+                if attempt > 0:
+                    print(f"✅ Retry successful on attempt {attempt + 1}")
+                
                 return response.strip()
                 
             except Exception as e:
                 last_error = str(e)
-                if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
-                    print(f"Memory error on attempt {attempt + 1}, trying with truncated content...")
+                error_msg = str(e).lower()
+                
+                if "out of memory" in error_msg or "cuda" in error_msg:
+                    print(f"🔄 Memory error on attempt {attempt + 1}, trying with truncated content...")
                     # Truncate content for next attempt
                     if attempt < max_retries:
+                        old_length = len(current_content)
                         # Truncate to 80% of current length
                         current_content = current_content[:int(len(current_content) * 0.8)]
+                        new_length = len(current_content)
+                        print(f"   Truncated from {old_length} to {new_length} characters")
                     else:
+                        print(f"❌ All retry attempts exhausted")
                         raise e
                 else:
+                    if attempt > 0:
+                        print(f"❌ Retry failed on attempt {attempt + 1}: {str(e)}")
                     raise e
         
         # If all attempts failed
+        print(f"💥 All {max_retries + 1} attempts failed. Original length: {original_length} chars")
         raise Exception(f"All {max_retries + 1} attempts failed. Last error: {last_error}")
     
     def save_checkpoint(self, results: Dict, batch_num: int):
