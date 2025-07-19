@@ -506,13 +506,16 @@ class BatchEvaluator:
                         'support': int(metrics.get('support', 0))
                     }
         
-        # Find most confused pairs
+        # Find most confused pairs and class error statistics
         if 'predictions' in results and 'ground_truth' in results:
             from collections import Counter
             error_pairs = []
+            class_errors = Counter()
+            
             for pred, gt in zip(results['predictions'], results['ground_truth']):
                 if pred != gt:
                     error_pairs.append((gt, pred))
+                    class_errors[gt] += 1  # Count errors per true class
             
             error_pair_counts = Counter(error_pairs)
             most_confused = error_pair_counts.most_common(10)
@@ -525,6 +528,32 @@ class BatchEvaluator:
                 }
                 for pair, count in most_confused
             ]
+            
+            # Find classes with most and least errors
+            if class_errors:
+                most_error_class = class_errors.most_common(1)[0][0]
+                least_error_class = min(class_errors.items(), key=lambda x: x[1])[0]
+                
+                analysis['error_analysis']['class_with_most_errors'] = {
+                    'intent_id': most_error_class,
+                    'intent_name': self.business_types.get(most_error_class, f"Class_{most_error_class}"),
+                    'error_count': class_errors[most_error_class]
+                }
+                
+                analysis['error_analysis']['class_with_least_errors'] = {
+                    'intent_id': least_error_class,
+                    'intent_name': self.business_types.get(least_error_class, f"Class_{least_error_class}"),
+                    'error_count': class_errors[least_error_class]
+                }
+            
+            # Add overall error statistics
+            analysis['error_analysis']['total_errors'] = len(error_pairs)
+            analysis['error_analysis']['error_rate'] = len(error_pairs) / len(results['predictions']) if results['predictions'] else 0
+            analysis['error_analysis']['classes_with_errors'] = len(class_errors)
+            analysis['error_analysis']['error_distribution'] = {
+                self.business_types.get(intent_id, f"Class_{intent_id}"): count
+                for intent_id, count in class_errors.most_common()
+            }
         
         with open(analysis_file, 'w', encoding='utf-8') as f:
             json.dump(analysis, f, ensure_ascii=False, indent=2)
