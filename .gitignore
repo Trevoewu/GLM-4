@@ -2,4 +2,4 @@
 *.DS_Store
 *.idea/
 dataset
-test*
+finetune/data/cmcc-34/.*.json
