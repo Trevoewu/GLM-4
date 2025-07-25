@@ -11,7 +11,7 @@ import base64
 from openai import OpenAI
 
 
-base_url = "http://127.0.0.1:8000/v1/"
+base_url = "http://127.0.0.1:8001/v1/"
 client = OpenAI(api_key="EMPTY", base_url=base_url)
 
 

@@ -1,0 +1,99 @@
+# CMCC-34 数据增强配置文件
+# LLM-based Sample Synthesis Configuration
+
+# 数据增强设置
+augmentation:
+  # 目标样本数设置
+  target_samples_per_class: 200  # 每个类别的目标样本数（增加到200）
+  minority_threshold_ratio: 0.1   # 少数类别阈值比例（低于平均值的10%视为少数类别，更激进）
+  
+  # 生成设置
+  batch_size: 10                  # 每次生成的样本数（增加到10）
+  max_retries: 5                  # API调用失败时的重试次数（增加到5）
+  delay_between_calls: 0.5        # API调用间隔（减少到0.5秒）
+  
+  # 质量控制
+  min_conversation_length: 50     # 对话最小长度
+  max_conversation_length: 500    # 对话最大长度
+  similarity_threshold: 0.8       # 与原始样本的最大相似度阈值
+
+# LLM API配置
+llm_config:
+  # API设置
+  api_url: "http://localhost:8001/v1/chat/completions"  # GLM-4本地服务
+  api_key: null                   # API密钥（如需要）
+  model_name: "glm-4"            # 模型名称
+  
+  # 生成参数
+  temperature: 0.8                # 生成温度
+  max_tokens: 2000               # 最大生成长度
+  top_p: 0.9                     # Top-p采样
+  
+  # 备用API配置（如果主API不可用）
+  fallback_apis:
+    - url: "https://api.openai.com/v1/chat/completions"
+      model: "gpt-3.5-turbo"
+      api_key_env: "OPENAI_API_KEY"
+    - url: "https://api.anthropic.com/v1/messages"
+      model: "claude-3-sonnet-20240229"
+      api_key_env: "ANTHROPIC_API_KEY"
+
+# 输出设置
+output:
+  balanced_train_file: "output/train_balanced.csv"
+  balanced_dev_file: "output/dev_balanced.csv"
+  synthetic_samples_file: "output/synthetic_samples.json"  # 保存合成样本详情
+  
+  # 日志设置
+  log_file: "augmentation.log"
+  log_level: "INFO"
+
+# 特定类别的增强策略
+class_specific_strategies:
+  # 超少数类别（样本数 < 10）
+  ultra_minority:
+    classes:
+      - 32  # 办理销户/重开
+      - 33  # 咨询（含查询）电商货品信息
+      - 29  # 办理缴费
+      - 30  # 办理下载/设置
+      - 31  # 办理补换卡
+    target_samples: 300   # 直接目标样本数
+    
+  # 少数类别（样本数 < 50）  
+  minority:
+    classes:
+      - 26  # 办理打印/邮寄
+      - 27  # 咨询（含查询）宽带覆盖范围
+      - 28  # 办理移机/装机/拆机
+      - 20  # 办理停复机
+      - 22  # 办理重置/修改/补发
+      - 23  # 咨询（含查询）使用方式
+      - 24  # 咨询（含查询）号码状态
+      - 25  # 咨询（含查询）工单处理结果
+    target_samples: 200   # 直接目标样本数
+
+# 数据质量验证
+quality_control:
+  # 自动质量检查
+  enable_similarity_check: true   # 检查与原始样本的相似度
+  enable_length_check: true       # 检查对话长度
+  enable_keyword_check: true      # 检查是否包含相关关键词
+  
+  # 人工审核设置
+  manual_review_ratio: 0.1        # 人工审核比例（10%）
+  review_output_file: "output/samples_for_review.json"
+
+# 实验设置
+experiment:
+  # 数据划分
+  train_ratio: 0.8
+  dev_ratio: 0.1
+  test_ratio: 0.1
+  
+  # 随机种子
+  random_seed: 42
+  
+  # 保存中间结果
+  save_intermediate: true
+  intermediate_dir: "output/intermediate_results"

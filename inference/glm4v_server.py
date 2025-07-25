@@ -361,7 +361,10 @@ gc.collect()
 torch.cuda.empty_cache()
 
 if __name__ == "__main__":
-    MODEL_PATH = sys.argv[1]
+    if len(sys.argv) > 1:
+        MODEL_PATH = sys.argv[1]
+    else:
+        MODEL_PATH = "THUDM/GLM-4-9B-0414"
     model_dir = Path(MODEL_PATH).expanduser().resolve()
     if (model_dir / "adapter_config.json").exists():
         import json
@@ -385,4 +388,4 @@ if __name__ == "__main__":
             device_map="auto",
         ).eval()
 
-    uvicorn.run(app, host="0.0.0.0", port=8000, workers=1)
+    uvicorn.run(app, host="0.0.0.0", port=8001, workers=1)

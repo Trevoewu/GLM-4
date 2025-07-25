@@ -1,0 +1,346 @@
+[
+  {
+    "index": 6,
+    "predicted_intent": 17,
+    "predicted_label": "投诉（含抱怨）业务规定不满",
+    "ground_truth_intent": 2,
+    "ground_truth_label": "咨询（含查询）业务资费",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 7,
+    "predicted_intent": 4,
+    "predicted_label": "咨询（含查询）办理方式",
+    "ground_truth_intent": 5,
+    "ground_truth_label": "投诉（含抱怨）业务使用问题",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 9,
+    "predicted_intent": 12,
+    "predicted_label": "投诉（含抱怨）费用问题",
+    "ground_truth_intent": 6,
+    "ground_truth_label": "咨询（含查询）账户信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 11,
+    "predicted_intent": 1,
+    "predicted_label": "办理取消",
+    "ground_truth_intent": 8,
+    "ground_truth_label": "咨询（含查询）业务订购信息查询",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 12,
+    "predicted_intent": 7,
+    "predicted_label": "办理开通",
+    "ground_truth_intent": 10,
+    "ground_truth_label": "咨询（含查询）产品/业务功能",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 19,
+    "predicted_intent": 9,
+    "predicted_label": "投诉（含抱怨）不知情定制问题",
+    "ground_truth_intent": 11,
+    "ground_truth_label": "咨询（含查询）用户资料",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 20,
+    "predicted_intent": 6,
+    "predicted_label": "咨询（含查询）账户信息",
+    "ground_truth_intent": 12,
+    "ground_truth_label": "投诉（含抱怨）费用问题",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 21,
+    "predicted_intent": 0,
+    "predicted_label": "咨询（含查询）业务规定",
+    "ground_truth_intent": 2,
+    "ground_truth_label": "咨询（含查询）业务资费",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 22,
+    "predicted_intent": 5,
+    "predicted_label": "投诉（含抱怨）业务使用问题",
+    "ground_truth_intent": 18,
+    "ground_truth_label": "投诉（含抱怨）营销问题",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 24,
+    "predicted_intent": 6,
+    "predicted_label": "咨询（含查询）账户信息",
+    "ground_truth_intent": 10,
+    "ground_truth_label": "咨询（含查询）产品/业务功能",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 27,
+    "predicted_intent": 8,
+    "predicted_label": "咨询（含查询）业务订购信息查询",
+    "ground_truth_intent": 3,
+    "ground_truth_label": "咨询（含查询）营销活动信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 28,
+    "predicted_intent": 0,
+    "predicted_label": "咨询（含查询）业务规定",
+    "ground_truth_intent": 3,
+    "ground_truth_label": "咨询（含查询）营销活动信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 31,
+    "predicted_intent": 3,
+    "predicted_label": "咨询（含查询）营销活动信息",
+    "ground_truth_intent": 17,
+    "ground_truth_label": "投诉（含抱怨）业务规定不满",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 33,
+    "predicted_intent": 6,
+    "predicted_label": "咨询（含查询）账户信息",
+    "ground_truth_intent": 3,
+    "ground_truth_label": "咨询（含查询）营销活动信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 34,
+    "predicted_intent": 8,
+    "predicted_label": "咨询（含查询）业务订购信息查询",
+    "ground_truth_intent": 3,
+    "ground_truth_label": "咨询（含查询）营销活动信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 36,
+    "predicted_intent": 1,
+    "predicted_label": "办理取消",
+    "ground_truth_intent": 2,
+    "ground_truth_label": "咨询（含查询）业务资费",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 38,
+    "predicted_intent": 4,
+    "predicted_label": "咨询（含查询）办理方式",
+    "ground_truth_intent": 3,
+    "ground_truth_label": "咨询（含查询）营销活动信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 41,
+    "predicted_intent": 10,
+    "predicted_label": "咨询（含查询）产品/业务功能",
+    "ground_truth_intent": 14,
+    "ground_truth_label": "投诉（含抱怨）服务问题",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 48,
+    "predicted_intent": 5,
+    "predicted_label": "投诉（含抱怨）业务使用问题",
+    "ground_truth_intent": 19,
+    "ground_truth_label": "投诉（含抱怨）网络问题",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 50,
+    "predicted_intent": 4,
+    "predicted_label": "咨询（含查询）办理方式",
+    "ground_truth_intent": 3,
+    "ground_truth_label": "咨询（含查询）营销活动信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 51,
+    "predicted_intent": 9,
+    "predicted_label": "投诉（含抱怨）不知情定制问题",
+    "ground_truth_intent": 8,
+    "ground_truth_label": "咨询（含查询）业务订购信息查询",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 53,
+    "predicted_intent": 5,
+    "predicted_label": "投诉（含抱怨）业务使用问题",
+    "ground_truth_intent": 0,
+    "ground_truth_label": "咨询（含查询）业务规定",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 55,
+    "predicted_intent": 1,
+    "predicted_label": "办理取消",
+    "ground_truth_intent": 9,
+    "ground_truth_label": "投诉（含抱怨）不知情定制问题",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 57,
+    "predicted_intent": 0,
+    "predicted_label": "咨询（含查询）业务规定",
+    "ground_truth_intent": 6,
+    "ground_truth_label": "咨询（含查询）账户信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 58,
+    "predicted_intent": 4,
+    "predicted_label": "咨询（含查询）办理方式",
+    "ground_truth_intent": 6,
+    "ground_truth_label": "咨询（含查询）账户信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 61,
+    "predicted_intent": 4,
+    "predicted_label": "咨询（含查询）办理方式",
+    "ground_truth_intent": 0,
+    "ground_truth_label": "咨询（含查询）业务规定",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 65,
+    "predicted_intent": 0,
+    "predicted_label": "咨询（含查询）业务规定",
+    "ground_truth_intent": 3,
+    "ground_truth_label": "咨询（含查询）营销活动信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 69,
+    "predicted_intent": 1,
+    "predicted_label": "办理取消",
+    "ground_truth_intent": 15,
+    "ground_truth_label": "办理变更",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 71,
+    "predicted_intent": 10,
+    "predicted_label": "咨询（含查询）产品/业务功能",
+    "ground_truth_intent": 0,
+    "ground_truth_label": "咨询（含查询）业务规定",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 72,
+    "predicted_intent": 2,
+    "predicted_label": "咨询（含查询）业务资费",
+    "ground_truth_intent": 3,
+    "ground_truth_label": "咨询（含查询）营销活动信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 73,
+    "predicted_intent": 9,
+    "predicted_label": "投诉（含抱怨）不知情定制问题",
+    "ground_truth_intent": 1,
+    "ground_truth_label": "办理取消",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 74,
+    "predicted_intent": 4,
+    "predicted_label": "咨询（含查询）办理方式",
+    "ground_truth_intent": 0,
+    "ground_truth_label": "咨询（含查询）业务规定",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 75,
+    "predicted_intent": 0,
+    "predicted_label": "咨询（含查询）业务规定",
+    "ground_truth_intent": 2,
+    "ground_truth_label": "咨询（含查询）业务资费",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 77,
+    "predicted_intent": 5,
+    "predicted_label": "投诉（含抱怨）业务使用问题",
+    "ground_truth_intent": 14,
+    "ground_truth_label": "投诉（含抱怨）服务问题",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 78,
+    "predicted_intent": 10,
+    "predicted_label": "咨询（含查询）产品/业务功能",
+    "ground_truth_intent": 2,
+    "ground_truth_label": "咨询（含查询）业务资费",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 81,
+    "predicted_intent": 13,
+    "predicted_label": "投诉（含抱怨）业务办理问题",
+    "ground_truth_intent": 5,
+    "ground_truth_label": "投诉（含抱怨）业务使用问题",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 82,
+    "predicted_intent": 4,
+    "predicted_label": "咨询（含查询）办理方式",
+    "ground_truth_intent": 0,
+    "ground_truth_label": "咨询（含查询）业务规定",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 84,
+    "predicted_intent": 6,
+    "predicted_label": "咨询（含查询）账户信息",
+    "ground_truth_intent": 12,
+    "ground_truth_label": "投诉（含抱怨）费用问题",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 87,
+    "predicted_intent": 4,
+    "predicted_label": "咨询（含查询）办理方式",
+    "ground_truth_intent": 5,
+    "ground_truth_label": "投诉（含抱怨）业务使用问题",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 88,
+    "predicted_intent": 10,
+    "predicted_label": "咨询（含查询）产品/业务功能",
+    "ground_truth_intent": 0,
+    "ground_truth_label": "咨询（含查询）业务规定",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 89,
+    "predicted_intent": 0,
+    "predicted_label": "咨询（含查询）业务规定",
+    "ground_truth_intent": 4,
+    "ground_truth_label": "咨询（含查询）办理方式",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 90,
+    "predicted_intent": 0,
+    "predicted_label": "咨询（含查询）业务规定",
+    "ground_truth_intent": 6,
+    "ground_truth_label": "咨询（含查询）账户信息",
+    "error_type": "wrong_prediction"
+  },
+  {
+    "index": 93,
+    "predicted_intent": 0,
+    "predicted_label": "咨询（含查询）业务规定",
+    "ground_truth_intent": 6,
+    "ground_truth_label": "咨询（含查询）账户信息",
+    "error_type": "wrong_prediction"
+  }
+]

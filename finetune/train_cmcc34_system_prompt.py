@@ -14,7 +14,7 @@ def main():
     print("Starting CMCC-34 training with system prompt optimization...")
     
     # Configuration
-    data_dir = "data/cmcc-34"
+    data_dir = "../data/cmcc-34"
     model_dir = "THUDM/GLM-4-9B-0414"
     config_file = "configs/cmcc34_qlora_system_prompt.yaml"
     
@@ -25,12 +25,13 @@ def main():
     for file in dataset_files:
         file_path = os.path.join(data_dir, file)
         if not os.path.exists(file_path):
+            print(f"Error: Missing dataset files: {file_path}")
             missing_files.append(file)
     
     if missing_files:
         print(f"Error: Missing dataset files: {missing_files}")
         print("Please run the data conversion script first:")
-        print("  cd finetune/data/cmcc-34")
+        print("  cd data/cmcc-34")
         print("  python regenerate_dataset.py")
         sys.exit(1)
     
