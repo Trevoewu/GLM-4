@@ -28,6 +28,11 @@ from transformers import (
 from transformers import DataCollatorForSeq2Seq as _DataCollatorForSeq2Seq
 from transformers import Seq2SeqTrainer as _Seq2SeqTrainer
 
+# Fix for PyTorch 2.6 weights_only loading issue
+import torch.serialization
+import numpy.core.multiarray
+torch.serialization.add_safe_globals([numpy.core.multiarray._reconstruct])
+
 
 # For Ascend NPU, please add this
 # import torch_npu
@@ -39,7 +44,8 @@ img = Image.new("L", (224, 224), 0).convert("RGB")
 
 class DataCollatorForSeq2Seq(_DataCollatorForSeq2Seq):
     def __call__(self, features, return_tensors=None):
-        output_ids = [feature["output_ids"] for feature in features] if "output_ids" in features[0].keys() else None
+        output_ids = [feature["output_ids"]
+                      for feature in features] if "output_ids" in features[0].keys() else None
         if output_ids is not None:
             max_output_length = max(len(out) for out in output_ids)
             if self.pad_to_multiple_of is not None:
@@ -49,11 +55,13 @@ class DataCollatorForSeq2Seq(_DataCollatorForSeq2Seq):
                     * self.pad_to_multiple_of
                 )
             for feature in features:
-                remainder = [self.tokenizer.pad_token_id] * (max_output_length - len(feature["output_ids"]))
+                remainder = [self.tokenizer.pad_token_id] * \
+                    (max_output_length - len(feature["output_ids"]))
                 if isinstance(feature["output_ids"], list):
                     feature["output_ids"] = feature["output_ids"] + remainder
                 else:
-                    feature["output_ids"] = np.concatenate([feature["output_ids"], remainder]).astype(np.int64)
+                    feature["output_ids"] = np.concatenate(
+                        [feature["output_ids"], remainder]).astype(np.int64)
         return super().__call__(features, return_tensors)
 
 
@@ -79,7 +87,8 @@ class Seq2SeqTrainer(_Seq2SeqTrainer):
             )
 
             if generated_tokens is not None:
-                generated_tokens = generated_tokens[:, inputs["input_ids"].size()[1] :]
+                generated_tokens = generated_tokens[:, inputs["input_ids"].size()[
+                    1]:]
 
             if self.args.predict_with_generate:
                 labels = output_ids
@@ -148,7 +157,8 @@ class FinetuningConfig(object):
         if training_args is not None and not isinstance(training_args, Seq2SeqTrainingArguments):
             gen_config = training_args.get("generation_config")
             if not isinstance(gen_config, GenerationConfig):
-                training_args["generation_config"] = GenerationConfig(**gen_config)
+                training_args["generation_config"] = GenerationConfig(
+                    **gen_config)
             kwargs["training_args"] = Seq2SeqTrainingArguments(**training_args)
 
         data_config = kwargs.get("data_config")
@@ -184,7 +194,8 @@ def _load_datasets(
             num_proc=num_proc,
         )
     else:
-        raise NotImplementedError(f"Cannot load dataset in the '{data_format}' format.")
+        raise NotImplementedError(
+            f"Cannot load dataset in the '{data_format}' format.")
     return dataset_dct
 
 
@@ -257,11 +268,14 @@ def process_batch(
             conv[0]["image"] = img
 
         for message in conv:
-            loss_mask_val = False if message["role"] in ("system", "user", "observation") else True
-            new_input_ids_all = tokenizer.apply_chat_template([message], tokenize=True, return_dict=True, padding=True)
+            loss_mask_val = False if message["role"] in (
+                "system", "user", "observation") else True
+            new_input_ids_all = tokenizer.apply_chat_template(
+                [message], tokenize=True, return_dict=True, padding=True)
             new_input_ids = new_input_ids_all["input_ids"][0][2:]
             new_attention_mask = new_input_ids_all["attention_mask"][0][2:]
-            new_position_ids = list(range(position_ids[-1] + 1, position_ids[-1] + 1 + len(new_input_ids)))
+            new_position_ids = list(
+                range(position_ids[-1] + 1, position_ids[-1] + 1 + len(new_input_ids)))
             if message.get("image"):  # Only One Image
                 images.append(new_input_ids_all["images"])
 
@@ -335,7 +349,8 @@ def process_batch_eval(
             image = img
 
         conv[0]["image"] = image
-        new_input_ids_all = tokenizer.apply_chat_template(conv, tokenize=True, return_dict=True, padding=True)
+        new_input_ids_all = tokenizer.apply_chat_template(
+            conv, tokenize=True, return_dict=True, padding=True)
 
         input_ids = new_input_ids_all["input_ids"][0]
         attention_mask = new_input_ids_all["attention_mask"][0]
@@ -357,7 +372,7 @@ def process_batch_eval(
             input_segment = input_ids[: dialogue_parts[end_idx]]
             attention_segment = attention_mask[: dialogue_parts[end_idx]]
             position_segment = position_ids[: dialogue_parts[end_idx]]
-            output_segment = input_ids[dialogue_parts[end_idx] : user_idx[end_idx]]
+            output_segment = input_ids[dialogue_parts[end_idx]                                       : user_idx[end_idx]]
             output_segment.append(151336)  # Add EOS token
 
             batched_input_ids.append(input_segment[:max_input_length])
@@ -389,7 +404,8 @@ def load_tokenizer_and_model(
     model_dir: str,
     peft_config: Optional[PeftConfig] = None,
 ):
-    tokenizer = AutoTokenizer.from_pretrained(model_dir, padding_side="left", trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_dir, padding_side="left", trust_remote_code=True)
     if peft_config is not None:
         model = AutoModelForCausalLM.from_pretrained(
             model_dir,
@@ -420,7 +436,8 @@ def compute_metrics(eval_preds: EvalPrediction, tokenizer):
         pred_tokens = list(jieba.cut(pred_txt))
         label_tokens = list(jieba.cut(label_txt))
         rouge = Rouge()
-        scores = rouge.get_scores(" ".join(pred_tokens), " ".join(label_tokens))
+        scores = rouge.get_scores(
+            " ".join(pred_tokens), " ".join(label_tokens))
         for k, v in scores[0].items():
             metrics_dct[k].append(round(v["f"] * 100, 4))
         metrics_dct["bleu-4"].append(
@@ -449,7 +466,8 @@ def main(
     ),
 ):
     ft_config = FinetuningConfig.from_file(config_file)
-    tokenizer, model = load_tokenizer_and_model(model_dir, peft_config=ft_config.peft_config)
+    tokenizer, model = load_tokenizer_and_model(
+        model_dir, peft_config=ft_config.peft_config)
 
     if ft_config.freezeV:
         for param in model.transformer.vision.parameters():
@@ -498,7 +516,8 @@ def main(
         print("test_dataset:", test_dataset)
 
     ft_config.training_args.generation_config.pad_token_id = 151329
-    ft_config.training_args.generation_config.eos_token_id = [151329, 151336, 151338]
+    ft_config.training_args.generation_config.eos_token_id = [
+        151329, 151336, 151338]
 
     trainer = Seq2SeqTrainer(
         model=model,
@@ -510,7 +529,8 @@ def main(
         ),
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
-        compute_metrics=functools.partial(compute_metrics, tokenizer=tokenizer),
+        compute_metrics=functools.partial(
+            compute_metrics, tokenizer=tokenizer),
     )
 
     if auto_resume_from_checkpoint.upper() == "" or auto_resume_from_checkpoint is None:
@@ -528,7 +548,8 @@ def main(
             if checkpoint_sn > 0:
                 model.gradient_checkpointing_enable()
                 model.enable_input_require_grads()
-                checkpoint_directory = os.path.join(output_dir, "checkpoint-" + str(checkpoint_sn))
+                checkpoint_directory = os.path.join(
+                    output_dir, "checkpoint-" + str(checkpoint_sn))
                 print("resume checkpoint from checkpoint-" + str(checkpoint_sn))
                 trainer.train(resume_from_checkpoint=checkpoint_directory)
             else:
@@ -539,8 +560,10 @@ def main(
                     checkpoint_sn = int(auto_resume_from_checkpoint)
                     model.gradient_checkpointing_enable()
                     model.enable_input_require_grads()
-                    checkpoint_directory = os.path.join(output_dir, "checkpoint-" + str(checkpoint_sn))
-                    print("resume checkpoint from checkpoint-" + str(checkpoint_sn))
+                    checkpoint_directory = os.path.join(
+                        output_dir, "checkpoint-" + str(checkpoint_sn))
+                    print("resume checkpoint from checkpoint-" +
+                          str(checkpoint_sn))
                     trainer.train(resume_from_checkpoint=checkpoint_directory)
             else:
                 print(

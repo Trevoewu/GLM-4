@@ -27,6 +27,27 @@ from transformers import (
 from transformers import DataCollatorForSeq2Seq as _DataCollatorForSeq2Seq
 from transformers import Seq2SeqTrainer as _Seq2SeqTrainer
 
+# Fix for PyTorch 2.6 weights_only loading issue
+import torch.serialization
+import numpy.core.multiarray
+
+# Add safe globals for numpy
+torch.serialization.add_safe_globals([numpy.core.multiarray._reconstruct])
+
+# Monkey patch torch.load to use weights_only=False for checkpoint loading
+_original_torch_load = torch.load
+def _patched_torch_load(f, map_location=None, pickle_module=None, weights_only=None, **kwargs):
+    """Patched torch.load that uses weights_only=False for checkpoint files."""
+    # For checkpoint files, always use weights_only=False
+    if weights_only is None:
+        if isinstance(f, (str, os.PathLike)) and ('checkpoint' in str(f) or 'rng_state' in str(f)):
+            weights_only = False
+        else:
+            weights_only = False  # Default to False for compatibility
+    return _original_torch_load(f, map_location=map_location, pickle_module=pickle_module, weights_only=weights_only, **kwargs)
+
+torch.load = _patched_torch_load
+
 
 # For Ascend NPU, please add this
 # import torch_npu
@@ -37,7 +58,8 @@ app = typer.Typer(pretty_exceptions_show_locals=False)
 
 class DataCollatorForSeq2Seq(_DataCollatorForSeq2Seq):
     def __call__(self, features, return_tensors=None):
-        output_ids = [feature["output_ids"] for feature in features] if "output_ids" in features[0].keys() else None
+        output_ids = [feature["output_ids"]
+                      for feature in features] if "output_ids" in features[0].keys() else None
         if output_ids is not None:
             max_output_length = max(len(out) for out in output_ids)
             if self.pad_to_multiple_of is not None:
@@ -47,11 +69,13 @@ class DataCollatorForSeq2Seq(_DataCollatorForSeq2Seq):
                     * self.pad_to_multiple_of
                 )
             for feature in features:
-                remainder = [self.tokenizer.pad_token_id] * (max_output_length - len(feature["output_ids"]))
+                remainder = [self.tokenizer.pad_token_id] * \
+                    (max_output_length - len(feature["output_ids"]))
                 if isinstance(feature["output_ids"], list):
                     feature["output_ids"] = feature["output_ids"] + remainder
                 else:
-                    feature["output_ids"] = np.concatenate([feature["output_ids"], remainder]).astype(np.int64)
+                    feature["output_ids"] = np.concatenate(
+                        [feature["output_ids"], remainder]).astype(np.int64)
         return super().__call__(features, return_tensors)
 
 
@@ -74,7 +98,7 @@ class Seq2SeqTrainer(_Seq2SeqTrainer):
                 model, inputs, prediction_loss_only, ignore_keys, **gen_kwargs
             )
 
-            generated_tokens = generated_tokens[:, input_ids.size()[1] :]
+            generated_tokens = generated_tokens[:, input_ids.size()[1]:]
             labels = output_ids
 
             del inputs, input_ids, output_ids
@@ -142,7 +166,8 @@ class FinetuningConfig(object):
         if training_args is not None and not isinstance(training_args, Seq2SeqTrainingArguments):
             gen_config = training_args.get("generation_config")
             if not isinstance(gen_config, GenerationConfig):
-                training_args["generation_config"] = GenerationConfig(**gen_config)
+                training_args["generation_config"] = GenerationConfig(
+                    **gen_config)
             kwargs["training_args"] = Seq2SeqTrainingArguments(**training_args)
 
         data_config = kwargs.get("data_config")
@@ -178,7 +203,8 @@ def _load_datasets(
             num_proc=num_proc,
         )
     else:
-        raise NotImplementedError(f"Cannot load dataset in the '{data_format}' format.")
+        raise NotImplementedError(
+            f"Cannot load dataset in the '{data_format}' format.")
     return dataset_dct
 
 
@@ -223,7 +249,8 @@ def process_message(message):
     if "tools" in message and message["role"] == "system":
         for tool in message["tools"]:
             parameters = tool["function"]["parameters"]["properties"]
-            tool["function"]["parameters"]["properties"] = {k: v for k, v in parameters.items() if v is not None}
+            tool["function"]["parameters"]["properties"] = {
+                k: v for k, v in parameters.items() if v is not None}
     elif "tools" in message:
         del message["tools"]
     return message
@@ -243,17 +270,21 @@ def process_batch(
         input_ids = [151331, 151333]
         loss_masks = [False, False]
         if combine:
-            new_input_ids = tokenizer.apply_chat_template(conv, tokenize=True, return_dict=False)
+            new_input_ids = tokenizer.apply_chat_template(
+                conv, tokenize=True, return_dict=False)
             input_ids = new_input_ids
             loss_masks = [False] * len(input_ids)
-            last_assistant_index = len(input_ids) - input_ids[::-1].index(151337) - 1
+            last_assistant_index = len(
+                input_ids) - input_ids[::-1].index(151337) - 1
             for j in range(last_assistant_index + 1, len(input_ids)):
                 loss_masks[j] = True
         else:
             for message in conv:
                 message = process_message(message)
-                loss_mask_val = False if message["role"] in ("system", "user", "observation") else True
-                new_input_ids = tokenizer.apply_chat_template([message], tokenize=True, return_dict=False)[2:]
+                loss_mask_val = False if message["role"] in (
+                    "system", "user", "observation") else True
+                new_input_ids = tokenizer.apply_chat_template(
+                    [message], tokenize=True, return_dict=False)[2:]
                 input_ids += new_input_ids
                 loss_masks += [loss_mask_val] * len(new_input_ids)
 
@@ -288,15 +319,18 @@ def process_batch_eval(
 
     for conv in batched_conv:
         if combine:
-            new_input_ids = tokenizer.apply_chat_template(conv, tokenize=True, return_dict=False)
+            new_input_ids = tokenizer.apply_chat_template(
+                conv, tokenize=True, return_dict=False)
             input_ids = new_input_ids
-            last_assistant_index = len(input_ids) - input_ids[::-1].index(151337) - 1
+            last_assistant_index = len(
+                input_ids) - input_ids[::-1].index(151337) - 1
             output_prompt, output_ids = (
                 input_ids[:1],
                 input_ids[last_assistant_index:],
             )
             output_ids.append(151336)
-            batched_input_ids.append(input_ids[:max_input_length] + output_prompt[:1])
+            batched_input_ids.append(
+                input_ids[:max_input_length] + output_prompt[:1])
             batched_output_ids.append(output_ids[:max_output_length])
         else:
             input_ids = [151331, 151333]
@@ -305,15 +339,18 @@ def process_batch_eval(
                     break
                 else:
                     message = process_message(message)
-                    new_input_ids = tokenizer.apply_chat_template([message], tokenize=True, return_dict=False)[2:]
+                    new_input_ids = tokenizer.apply_chat_template(
+                        [message], tokenize=True, return_dict=False)[2:]
                     if message["role"] == "assistant":
                         output_prompt, output_ids = (
                             new_input_ids[:1],
                             new_input_ids[1:],
                         )
                         output_ids.append(151336)
-                        batched_input_ids.append(input_ids[:max_input_length] + output_prompt[:1])
-                        batched_output_ids.append(output_ids[:max_output_length])
+                        batched_input_ids.append(
+                            input_ids[:max_input_length] + output_prompt[:1])
+                        batched_output_ids.append(
+                            output_ids[:max_output_length])
                     input_ids += new_input_ids
 
     del batched_conv, conv, input_ids, new_input_ids, output_prompt, output_ids
@@ -327,39 +364,42 @@ def load_tokenizer_and_model(
     peft_config: Optional[PeftConfig] = None,
     quantization_config: Optional[dict] = None,
 ):
-    tokenizer = AutoTokenizer.from_pretrained(model_dir, padding_side="left", trust_remote_code=True)
-    
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_dir, padding_side="left", trust_remote_code=True)
+
     # Prepare model loading kwargs
     model_kwargs = {
         "use_cache": False,
         "torch_dtype": torch.bfloat16,  # Must use BFloat 16
         "trust_remote_code": True,
     }
-    
+
     # Add quantization config if provided
     if quantization_config:
         from transformers import BitsAndBytesConfig
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=quantization_config.get("load_in_4bit", False),
             bnb_4bit_compute_dtype=torch.bfloat16,
-            bnb_4bit_use_double_quant=quantization_config.get("bnb_4bit_use_double_quant", False),
-            bnb_4bit_quant_type=quantization_config.get("bnb_4bit_quant_type", "nf4"),
+            bnb_4bit_use_double_quant=quantization_config.get(
+                "bnb_4bit_use_double_quant", False),
+            bnb_4bit_quant_type=quantization_config.get(
+                "bnb_4bit_quant_type", "nf4"),
         )
         model_kwargs["quantization_config"] = bnb_config
         model_kwargs["device_map"] = "auto"
-    
+
     if peft_config is not None:
         model = AutoModelForCausalLM.from_pretrained(model_dir, **model_kwargs)
         model = get_peft_model(model, peft_config)
         model.print_trainable_parameters()
-        
+
         # Enable gradient checkpointing for QLoRA
         if quantization_config and quantization_config.get("load_in_4bit", False):
             model.gradient_checkpointing_enable()
             model.enable_input_require_grads()
     else:
         model = AutoModelForCausalLM.from_pretrained(model_dir, **model_kwargs)
-    
+
     return tokenizer, model
 
 
@@ -374,7 +414,8 @@ def compute_metrics(eval_preds: EvalPrediction, tokenizer):
         pred_tokens = list(jieba.cut(pred_txt))
         label_tokens = list(jieba.cut(label_txt))
         rouge = Rouge()
-        scores = rouge.get_scores(" ".join(pred_tokens), " ".join(label_tokens))
+        scores = rouge.get_scores(
+            " ".join(pred_tokens), " ".join(label_tokens))
         for k, v in scores[0].items():
             metrics_dct[k].append(round(v["f"] * 100, 4))
         try:
@@ -408,7 +449,7 @@ def main(
 ):
     ft_config = FinetuningConfig.from_file(config_file)
     tokenizer, model = load_tokenizer_and_model(
-        model_dir, 
+        model_dir,
         peft_config=ft_config.peft_config,
         quantization_config=ft_config.quantization_config
     )
@@ -454,7 +495,8 @@ def main(
         print("test_dataset:", test_dataset)
 
     ft_config.training_args.generation_config.pad_token_id = 151329
-    ft_config.training_args.generation_config.eos_token_id = [151329, 151336, 151338]
+    ft_config.training_args.generation_config.eos_token_id = [
+        151329, 151336, 151338]
 
     trainer = Seq2SeqTrainer(
         model=model,
@@ -466,7 +508,8 @@ def main(
         ),
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
-        compute_metrics=functools.partial(compute_metrics, tokenizer=tokenizer),
+        compute_metrics=functools.partial(
+            compute_metrics, tokenizer=tokenizer),
     )
 
     if auto_resume_from_checkpoint.upper() == "" or auto_resume_from_checkpoint is None:
@@ -484,7 +527,8 @@ def main(
             if checkpoint_sn > 0:
                 model.gradient_checkpointing_enable()
                 model.enable_input_require_grads()
-                checkpoint_directory = os.path.join(output_dir, "checkpoint-" + str(checkpoint_sn))
+                checkpoint_directory = os.path.join(
+                    output_dir, "checkpoint-" + str(checkpoint_sn))
                 print("resume checkpoint from checkpoint-" + str(checkpoint_sn))
                 trainer.train(resume_from_checkpoint=checkpoint_directory)
             else:
@@ -495,8 +539,10 @@ def main(
                     checkpoint_sn = int(auto_resume_from_checkpoint)
                     model.gradient_checkpointing_enable()
                     model.enable_input_require_grads()
-                    checkpoint_directory = os.path.join(output_dir, "checkpoint-" + str(checkpoint_sn))
-                    print("resume checkpoint from checkpoint-" + str(checkpoint_sn))
+                    checkpoint_directory = os.path.join(
+                        output_dir, "checkpoint-" + str(checkpoint_sn))
+                    print("resume checkpoint from checkpoint-" +
+                          str(checkpoint_sn))
                     trainer.train(resume_from_checkpoint=checkpoint_directory)
             else:
                 print(

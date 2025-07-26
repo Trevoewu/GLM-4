@@ -22,10 +22,16 @@ from transformers import (
 )
 from peft import PeftModelForCausalLM
 
+# Fix for PyTorch 2.6 weights_only loading issue
+import torch.serialization
+import numpy.core.multiarray
+torch.serialization.add_safe_globals([numpy.core.multiarray._reconstruct])
+
 
 # Configuration - Update these paths as needed
 BASE_MODEL_PATH = "THUDM/GLM-4-9B-0414"  # Base model path
-FINETUNED_MODEL_PATH = "../finetune/output/cmcc34_qlora/checkpoint-5000"  # Your fine-tuned checkpoint
+# Your fine-tuned checkpoint
+FINETUNED_MODEL_PATH = "../finetune/output/cmcc34_qlora_system_prompt/checkpoint-5000"
 USE_4BIT = True  # Set to True if you used QLoRA with 4-bit quantization
 
 
@@ -35,17 +41,18 @@ def load_finetuned_model(base_model_path: str, finetuned_path: str, use_4bit: bo
     """
     print(f"Loading base model from: {base_model_path}")
     print(f"Loading fine-tuned adapters from: {finetuned_path}")
-    
+
     # Load tokenizer from base model
-    tokenizer = AutoTokenizer.from_pretrained(base_model_path, trust_remote_code=True)
-    
+    tokenizer = AutoTokenizer.from_pretrained(
+        base_model_path, trust_remote_code=True)
+
     # Prepare model loading kwargs
     model_kwargs = {
         "use_cache": False,
         "torch_dtype": torch.bfloat16,
         "trust_remote_code": True,
     }
-    
+
     # Add quantization config if using 4-bit
     if use_4bit:
         from transformers import BitsAndBytesConfig
@@ -57,18 +64,19 @@ def load_finetuned_model(base_model_path: str, finetuned_path: str, use_4bit: bo
         )
         model_kwargs["quantization_config"] = bnb_config
         model_kwargs["device_map"] = "auto"
-    
+
     # Load base model
-    model = AutoModelForCausalLM.from_pretrained(base_model_path, **model_kwargs)
-    
+    model = AutoModelForCausalLM.from_pretrained(
+        base_model_path, **model_kwargs)
+
     # Load LoRA/QLoRA adapters
     model = PeftModelForCausalLM.from_pretrained(model, finetuned_path)
-    
+
     # Enable gradient checkpointing for QLoRA if using 4-bit
     if use_4bit:
         model.gradient_checkpointing_enable()
         model.enable_input_require_grads()
-    
+
     model.eval()
     print("Model loaded successfully!")
     return tokenizer, model
@@ -85,8 +93,9 @@ class StopOnTokens(StoppingCriteria):
 
 if __name__ == "__main__":
     # Load the fine-tuned model
-    tokenizer, model = load_finetuned_model(BASE_MODEL_PATH, FINETUNED_MODEL_PATH, USE_4BIT)
-    
+    tokenizer, model = load_finetuned_model(
+        BASE_MODEL_PATH, FINETUNED_MODEL_PATH, USE_4BIT)
+
     history = []
     max_length = 2048  # Reduced for memory efficiency
     top_p = 0.8
@@ -96,7 +105,7 @@ if __name__ == "__main__":
     print("Welcome to the Fine-tuned GLM-4-9B CLI chat!")
     print("This model has been fine-tuned on the CMCC-34 dataset.")
     print("Type your messages below. Type 'exit' or 'quit' to end the conversation.")
-    
+
     while True:
         user_input = input("\nYou: ")
         if user_input.lower() in ["exit", "quit"]:
@@ -112,12 +121,13 @@ if __name__ == "__main__":
                 messages.append({"role": "user", "content": user_msg})
             if model_msg:
                 messages.append({"role": "assistant", "content": model_msg})
-        
+
         model_inputs = tokenizer.apply_chat_template(
             messages, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt"
         ).to(model.device)
-        
-        streamer = TextIteratorStreamer(tokenizer=tokenizer, timeout=60, skip_prompt=True, skip_special_tokens=True)
+
+        streamer = TextIteratorStreamer(
+            tokenizer=tokenizer, timeout=60, skip_prompt=True, skip_special_tokens=True)
         generate_kwargs = {
             "input_ids": model_inputs["input_ids"],
             "attention_mask": model_inputs["attention_mask"],
@@ -130,7 +140,7 @@ if __name__ == "__main__":
             "repetition_penalty": 1.2,
             "eos_token_id": model.config.eos_token_id,
         }
-        
+
         t = Thread(target=model.generate, kwargs=generate_kwargs)
         t.start()
         print("GLM-4 (Fine-tuned):", end="", flush=True)

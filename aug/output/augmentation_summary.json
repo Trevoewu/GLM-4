@@ -8,17 +8,17 @@
     "max_samples": 1961
   },
   "balanced": {
-    "total_samples": 12898,
+    "total_samples": 14380,
     "classes": 34,
-    "gini_coefficient": 0.6431047221183404,
-    "imbalance_ratio": 1961.0,
-    "min_samples": 1,
+    "gini_coefficient": 0.532377485069132,
+    "imbalance_ratio": 49.025,
+    "min_samples": 40,
     "max_samples": 1961
   },
   "improvement": {
-    "added_samples": 99,
-    "gini_reduction": 0.007890530268105267,
-    "classes_improved": 5,
-    "classes_needing_attention": 11
+    "added_samples": 1581,
+    "gini_reduction": 0.11861776731731366,
+    "classes_improved": 11,
+    "classes_needing_attention": 2
   }
 }

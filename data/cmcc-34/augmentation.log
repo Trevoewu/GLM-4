@@ -1,0 +1,8 @@
+2025-07-25 02:26:39,691 - INFO - ============================================================
+2025-07-25 02:26:39,691 - INFO - CMCC-34数据集LLM样本合成增强
+2025-07-25 02:26:39,692 - INFO - ============================================================
+2025-07-25 02:26:39,697 - WARNING - 无法连接到API: HTTPSConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /health (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate (_ssl.c:1000)')))
+2025-07-25 02:26:39,697 - INFO - 开始数据增强过程...
+2025-07-25 02:26:39,697 - INFO - DRY RUN模式：仅分析数据分布，不生成新样本
+2025-07-25 02:26:40,301 - INFO - 识别到 16 个少数类别
+2025-07-25 02:26:40,301 - INFO - 任务完成！
