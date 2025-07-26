@@ -63,36 +63,36 @@ aug/
 
 ### 1. Start GLM-4 API Server
 ```bash
-# Navigate to aug directory
-cd /data/wxl/GLM-4/aug
-
 # Start the GLM-4 API server (runs on port 8001)
-python api_server.py
+python src/scripts/api_server.py
 ```
 
 ### 2. Run Data Augmentation
 
 ```bash
-# Test configuration (dry-run)
-python run_aug.py --dry-run
+# Option 1: Use the convenient launcher (recommended)
+python run_augmentation.py --dry-run    # Test configuration
+python run_augmentation.py              # Run full augmentation
 
-# Run full augmentation
-python run_aug.py
+# Option 2: Run directly from src (ensure PYTHONPATH is set)
+export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
+python src/scripts/run_aug.py --dry-run
+python src/scripts/run_aug.py
 
 # Generate comprehensive analysis
-python generate_report.py
-python plot_final_comparison.py
+python src/utils/generate_report.py
+python src/plotting/plot_final_comparison.py
 ```
 
 ### 3. View Results
 
 ```bash
 # Check output structure
-ls -la output/
-ls -la output/plots/
+ls -la outputs/
+ls -la outputs/plots/
 
 # View analysis report
-cat output/data_augmentation_report.txt
+cat outputs/reports/data_augmentation_report.txt
 ```
 
 ## 📊 Expected Results

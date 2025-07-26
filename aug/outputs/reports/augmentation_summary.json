@@ -1,0 +1,24 @@
+{
+  "original": {
+    "total_samples": 12799,
+    "classes": 34,
+    "gini_coefficient": 0.6509952523864456,
+    "imbalance_ratio": 1961.0,
+    "min_samples": 1,
+    "max_samples": 1961
+  },
+  "balanced": {
+    "total_samples": 14380,
+    "classes": 34,
+    "gini_coefficient": 0.532377485069132,
+    "imbalance_ratio": 49.025,
+    "min_samples": 40,
+    "max_samples": 1961
+  },
+  "improvement": {
+    "added_samples": 1581,
+    "gini_reduction": 0.11861776731731366,
+    "classes_improved": 11,
+    "classes_needing_attention": 2
+  }
+}

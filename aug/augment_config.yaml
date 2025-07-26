@@ -1,6 +1,12 @@
 # CMCC-34 数据增强配置文件
 # LLM-based Sample Synthesis Configuration
 
+# 输入数据路径
+input_data:
+  train_file: "../data/cmcc-34/train_new.csv"    # 原始训练数据
+  dev_file: "../data/cmcc-34/dev_new.csv"        # 原始验证数据
+  test_file: "../data/cmcc-34/test_new.csv"      # 原始测试数据
+
 # 数据增强设置
 augmentation:
   # 目标样本数设置
@@ -40,12 +46,12 @@ llm_config:
 
 # 输出设置
 output:
-  balanced_train_file: "output/train_balanced.csv"
-  balanced_dev_file: "output/dev_balanced.csv"
-  synthetic_samples_file: "output/synthetic_samples.json"  # 保存合成样本详情
+  balanced_train_file: "data/train_balanced.csv"
+  balanced_dev_file: "data/dev_balanced.csv"
+  synthetic_samples_file: "outputs/reports/synthetic_samples.json"  # 保存合成样本详情
   
   # 日志设置
-  log_file: "augmentation.log"
+  log_file: "outputs/logs/augmentation.log"
   log_level: "INFO"
 
 # 特定类别的增强策略
@@ -82,7 +88,7 @@ quality_control:
   
   # 人工审核设置
   manual_review_ratio: 0.1        # 人工审核比例（10%）
-  review_output_file: "output/samples_for_review.json"
+  review_output_file: "outputs/reports/samples_for_review.json"
 
 # 实验设置
 experiment:
@@ -96,4 +102,4 @@ experiment:
   
   # 保存中间结果
   save_intermediate: true
-  intermediate_dir: "output/intermediate_results"
+  intermediate_dir: "outputs/intermediate_results"
