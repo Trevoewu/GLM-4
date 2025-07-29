@@ -1,6 +1,6 @@
 # GLM-4 Fine-tuning for CMCC-34 Intent Classification
 
-This repository contains a complete pipeline for fine-tuning GLM-4-9B on the CMCC-34 dataset for intent classification using QLoRA (Quantized Low-Rank Adaptation). The project includes data preparation, model training, evaluation, and inference capabilities.
+This repository contains a complete pipeline for fine-tuning GLM-4-9B on the CMCC-34 dataset for intent classification using QLoRA (Quantized Low-Rank Adaptation). The project includes data preparation, **LLM-based data augmentation**, model training, evaluation, and inference capabilities.
 
 ## 🚀 Quick Start
 
@@ -15,14 +15,20 @@ pip install scikit-learn matplotlib seaborn tqdm
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
-### 2. Data Preparation
+### 2. Data Preparation & Augmentation
 
 ```bash
 # Convert raw CSV data to GLM-4 format with system prompts
 cd finetune/data/cmcc-34
 python convert_data.py
 
+# Run LLM-based data augmentation to address class imbalance
+cd ../../aug
+python run_augmentation.py --dry-run    # Test configuration
+python run_augmentation.py              # Run full augmentation
+
 # Regenerate dataset if needed
+cd ../finetune/data/cmcc-34
 python regenerate_dataset.py
 ```
 
@@ -54,35 +60,87 @@ python trans_cli_finetuned_demo.py
 
 # Web interface
 python trans_web_finetuned_demo.py
+
+# GLM-4V Vision model
+python trans_cli_vision_demo.py
+
+# Batch inference
+python trans_batch_demo.py
 ```
 
 ## 📁 Project Structure
 
 ```
 GLM-4/
-├── finetune/                    # Fine-tuning pipeline
-│   ├── configs/                 # Training configurations
+├── aug/                           # 🆕 LLM-based Data Augmentation
+│   ├── run_augmentation.py       # Main augmentation runner
+│   ├── data_augmentation.py      # GLM-4 augmentation logic
+│   ├── augment_config.yaml       # Configuration
+│   ├── visualization.py          # Analysis and plotting
+│   ├── outputs/                  # Generated datasets and plots
+│   └── src/                      # Core augmentation modules
+├── finetune/                     # Fine-tuning pipeline
+│   ├── configs/                  # Training configurations
 │   │   └── cmcc34_qlora_system_prompt.yaml
-│   ├── data/                    # Data processing scripts
+│   ├── data/                     # Data processing scripts
 │   │   └── cmcc-34/
 │   │       ├── convert_data.py
 │   │       ├── regenerate_dataset.py
 │   │       ├── train.jsonl
 │   │       └── test.jsonl
-│   ├── output/                  # Training outputs
+│   ├── output/                   # Training outputs
 │   │   └── cmcc34_qlora_system_prompt/
 │   └── train_cmcc34_system_prompt.py
-├── evaluation/                  # Model evaluation
-│   ├── evaluate.py             # Main evaluation script
-│   └── output/                 # Evaluation results
-├── inference/                   # Model inference
+├── evaluation/                   # Model evaluation
+│   ├── evaluate.py              # Main evaluation script
+│   └── output/                  # Evaluation results
+├── inference/                    # Model inference
 │   ├── trans_cli_finetuned_demo.py
 │   ├── trans_web_finetuned_demo.py
+│   ├── trans_cli_vision_demo.py # 🆕 GLM-4V support
+│   ├── trans_batch_demo.py      # 🆕 Batch inference
+│   ├── glm4v_server.py          # 🆕 GLM-4V API server
 │   └── test_finetuned_model.py
-├── demo/                        # Demo applications
-├── resources/                   # Additional resources
+├── demo/                         # Demo applications
+├── resources/                    # Additional resources
 └── README.md
 ```
+
+## 🆕 Data Augmentation Pipeline
+
+### Problem Statement
+The CMCC-34 dataset suffers from severe class imbalance:
+- **Most frequent class**: 1,961 samples (Class 0: 咨询业务规定)
+- **Least frequent classes**: 1 sample each (Class 32: 办理销户/重开, Class 33: 咨询电商货品信息)
+- **Imbalance ratio**: 1961:1
+- **Gini coefficient**: 0.651 (high inequality)
+
+### Key Features
+- **GLM-4 Integration**: Uses GLM-4 model for high-quality synthetic sample generation
+- **Smart Targeting**: Class-specific sample targets based on severity
+- **Quality Control**: Length, similarity, and keyword validation
+- **Visual Analytics**: Comprehensive comparison plots and distributions
+- **Structured Output**: All results organized in `output/` directory
+
+### Usage
+```bash
+# Start GLM-4 API server
+cd aug
+python src/scripts/api_server.py
+
+# Run augmentation
+python run_augmentation.py --dry-run    # Test configuration
+python run_augmentation.py              # Run full augmentation
+
+# View results
+ls -la outputs/
+cat outputs/reports/data_augmentation_report.txt
+```
+
+### Expected Results
+- **Dataset Growth**: ~3,000+ new synthetic samples
+- **Gini Coefficient**: 0.651 → ~0.400 (significant improvement)
+- **Imbalance Ratio**: 1961:1 → ~10:1 (dramatic reduction)
 
 ## 🔧 Configuration
 
@@ -193,6 +251,12 @@ python trans_cli_finetuned_demo.py
 # Example conversation:
 # User: 我想查询我的余额
 # Assistant: 意图：6:咨询（含查询）账户信息
+
+# GLM-4V Vision model
+python trans_cli_vision_demo.py
+
+# Batch inference
+python trans_batch_demo.py
 ```
 
 ## 📈 Evaluation Results
@@ -249,6 +313,7 @@ The evaluation script generates comprehensive results:
 - **Training**: ~24GB GPU memory (with QLoRA)
 - **Evaluation**: ~10GB GPU memory
 - **Inference**: ~10GB GPU memory
+- **Data Augmentation**: ~15GB GPU memory
 
 ## 🚀 Advanced Usage
 
