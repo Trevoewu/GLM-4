@@ -27,7 +27,7 @@ The CMCC-34 dataset suffers from severe class imbalance:
 - **Quality Control**: Length, similarity, and keyword validation
 
 ### 🎨 Professional Output Organization
-- **Structured Output**: All results organized in `output/` directory
+- **Structured Output**: All results organized in `outputs/` directory
 - **Visual Analytics**: Comprehensive comparison plots and distributions
 - **Detailed Reports**: Machine-readable summaries and human-readable analysis
 
@@ -36,38 +36,56 @@ The CMCC-34 dataset suffers from severe class imbalance:
 ```
 aug/
 ├── 📊 Core Scripts
-│   ├── run_aug.py                     # Main augmentation runner
-│   ├── data_augmentation.py           # Improved GLM-4 augmentation logic
-│   └── api_server.py                  # Custom GLM-4 API server
+│   ├── run_augmentation.py          # Main augmentation runner
+│   ├── visualization.py             # 🆕 Main visualization script
+│   └── requirements.txt             # Python dependencies
 ├── ⚙️ Configuration
-│   └── augment_config.yaml            # Enhanced configuration with class-specific targets
-├── 📈 Analysis & Visualization
-│   ├── plot_final_comparison.py       # Three-way comparison (Original/GLM-4/Enhanced)
-│   ├── plot_balanced_comparison.py    # GLM-4 vs Original comparison
-│   ├── plot_simple_distribution.py    # Distribution analysis
-│   └── generate_report.py             # Comprehensive reporting
-├── 📁 Output (Generated)
-│   ├── plots/                         # All visualization outputs
-│   │   ├── final_three_way_comparison.png
-│   │   ├── balanced_vs_original_comparison.png
-│   │   └── cmcc34_class_distribution.png
-│   ├── train_enhanced.csv             # GLM-4 augmented dataset
-│   ├── data_augmentation_report.txt   # Detailed analysis report
-│   └── augmentation_summary.json      # Machine-readable summary
+│   └── augment_config.yaml          # Enhanced configuration with class-specific targets
+├── 📁 Data
+│   └── train_balanced.csv           # Original balanced dataset
+├── 📁 Source Code (src/)
+│   ├── core/
+│   │   ├── data_augmentation.py    # Improved GLM-4 augmentation logic
+│   │   └── convert_data.py         # Data conversion utilities
+│   ├── scripts/
+│   │   ├── api_server.py           # Custom GLM-4 API server
+│   │   └── regenerate_dataset.py   # Dataset regeneration script
+│   ├── utils/
+│   │   └── generate_report.py      # Comprehensive reporting
+│   └── plotting/
+│       ├── plot_final_comparison.py    # Three-way comparison
+│       ├── plot_balanced_comparison.py # GLM-4 vs Original comparison
+│       ├── plot_simple_distribution.py # Distribution analysis
+│       └── plot_distribution.py        # Enhanced distribution plots
+├── 📁 Outputs (Generated)
+│   ├── visualizations/              # All visualization outputs
+│   │   ├── balanced_distribution.png
+│   │   ├── original_distribution.png
+│   │   ├── before_after_comparison.png
+│   │   └── before_after_comparison_metrics.json
+│   ├── plots/                       # Additional plot outputs
+│   ├── reports/                     # Analysis reports
+│   ├── logs/                        # Augmentation logs
+│   └── train_balanced.jsonl         # Generated balanced dataset
 └── 📚 Documentation
-    ├── README.md                      # This file
-    └── README_augmentation.md          # Technical documentation
+    └── README.md                    # This file
 ```
 
 ## 🚀 Quick Start
 
-### 1. Start GLM-4 API Server
+### 1. Install Dependencies
+```bash
+# Install required packages
+pip install -r requirements.txt
+```
+
+### 2. Start GLM-4 API Server
 ```bash
 # Start the GLM-4 API server (runs on port 8001)
 python src/scripts/api_server.py
 ```
 
-### 2. Run Data Augmentation
+### 3. Run Data Augmentation
 
 ```bash
 # Option 1: Use the convenient launcher (recommended)
@@ -78,21 +96,33 @@ python run_augmentation.py              # Run full augmentation
 export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
 python src/scripts/run_aug.py --dry-run
 python src/scripts/run_aug.py
-
-# Generate comprehensive analysis
-python src/utils/generate_report.py
-python src/plotting/plot_final_comparison.py
 ```
 
-### 3. View Results
+### 4. Generate Visualizations and Analysis
+
+```bash
+# Generate comprehensive analysis and visualizations
+python visualization.py
+
+# Or run individual components
+python src/utils/generate_report.py
+python src/plotting/plot_final_comparison.py
+python src/plotting/plot_balanced_comparison.py
+python src/plotting/plot_simple_distribution.py
+```
+
+### 5. View Results
 
 ```bash
 # Check output structure
 ls -la outputs/
-ls -la outputs/plots/
+ls -la outputs/visualizations/
 
 # View analysis report
 cat outputs/reports/data_augmentation_report.txt
+
+# Check generated dataset
+wc -l train_balanced.jsonl
 ```
 
 ## 📊 Expected Results
@@ -129,6 +159,26 @@ class_specific_strategies:
     target_samples: 200            # Moderate augmentation
 ```
 
+## 🎨 Visualization Features
+
+### Main Visualization Script (`visualization.py`)
+- **Comprehensive Analysis**: Single script for all visualization needs
+- **Before/After Comparison**: Visual comparison of original vs augmented datasets
+- **Distribution Analysis**: Class distribution plots and metrics
+- **Quality Metrics**: Generated samples quality assessment
+
+### Individual Plotting Scripts
+1. **`plot_final_comparison.py`**: Three-way comparison showing Original → GLM-4 → Enhanced results
+2. **`plot_balanced_comparison.py`**: Detailed GLM-4 vs Original analysis
+3. **`plot_simple_distribution.py`**: Clean distribution visualization
+4. **`plot_distribution.py`**: Enhanced distribution plots with detailed metrics
+
+### Output Files
+- **`balanced_distribution.png`**: Final balanced dataset distribution
+- **`original_distribution.png`**: Original dataset distribution
+- **`before_after_comparison.png`**: Side-by-side comparison
+- **`before_after_comparison_metrics.json`**: Quantitative comparison metrics
+
 ## 🔧 Technical Improvements
 
 ### vs. Original Implementation
@@ -138,7 +188,8 @@ class_specific_strategies:
 | **Retry Logic** | Basic | Exponential backoff |
 | **Class Targeting** | Fixed threshold | Class-specific targets |
 | **Error Handling** | Minimal | Comprehensive |
-| **Output Organization** | Scattered | Structured in `output/` |
+| **Output Organization** | Scattered | Structured in `outputs/` |
+| **Visualization** | Basic | Comprehensive with multiple scripts |
 | **Documentation** | Basic | Comprehensive |
 
 ### API Compatibility
@@ -149,15 +200,16 @@ class_specific_strategies:
 
 ## 📊 Analysis Tools
 
-### Visualization Scripts
-1. **`plot_final_comparison.py`**: Three-way comparison showing Original → GLM-4 → Enhanced results
-2. **`plot_balanced_comparison.py`**: Detailed GLM-4 vs Original analysis
-3. **`plot_simple_distribution.py`**: Clean distribution visualization
-
 ### Reporting Tools
 1. **`generate_report.py`**: Comprehensive statistical analysis
 2. **`augmentation_summary.json`**: Machine-readable metrics
 3. **Automated quality checks**: Length, similarity, keyword validation
+
+### Quality Control
+- **Length Validation**: Ensures generated samples are appropriate length
+- **Similarity Check**: Prevents duplicate or very similar samples
+- **Keyword Validation**: Verifies class-specific keywords are present
+- **Format Consistency**: Maintains consistent JSONL format
 
 ## 🚨 Troubleshooting
 
@@ -190,6 +242,15 @@ class_specific_strategies:
    tail -f api_server.log
    ```
 
+4. **Visualization Errors**
+   ```bash
+   # Check matplotlib backend
+   python -c "import matplotlib; print(matplotlib.get_backend())"
+   
+   # Set backend if needed
+   export MPLBACKEND=Agg
+   ```
+
 ## 📈 Performance Monitoring
 
 ### Success Metrics
@@ -201,22 +262,22 @@ class_specific_strategies:
 ### Progress Tracking
 ```bash
 # Monitor generation progress
-tail -f augmentation.log
+tail -f outputs/logs/augmentation.log
 
 # Check current dataset size
-wc -l output/train_enhanced.csv
+wc -l train_balanced.jsonl
 
 # Analyze class distribution
 python -c "
 import pandas as pd
-df = pd.read_csv('output/train_enhanced.csv')
+df = pd.read_csv('data/train_balanced.csv')
 print(df['c_numerical'].value_counts().sort_index())
 "
 ```
 
 ## 🎯 Next Steps
 
-1. **Train Model**: Use `output/train_enhanced.csv` for model training
+1. **Train Model**: Use `train_balanced.jsonl` for model training
 2. **Evaluate Performance**: Compare F1-scores on minority classes
 3. **Iterate**: Adjust targets based on model performance
 4. **Scale**: Apply to other imbalanced datasets
