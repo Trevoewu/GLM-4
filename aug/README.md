@@ -82,20 +82,15 @@ pip install -r requirements.txt
 ### 2. Start GLM-4 API Server
 ```bash
 # Start the GLM-4 API server (runs on port 8001)
-python src/scripts/api_server.py
+cd inference && python glm4v_server.py
 ```
 
 ### 3. Run Data Augmentation
 
 ```bash
-# Option 1: Use the convenient launcher (recommended)
+cd ../aug 
 python run_augmentation.py --dry-run    # Test configuration
 python run_augmentation.py              # Run full augmentation
-
-# Option 2: Run directly from src (ensure PYTHONPATH is set)
-export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
-python src/scripts/run_aug.py --dry-run
-python src/scripts/run_aug.py
 ```
 
 ### 4. Generate Visualizations and Analysis
@@ -103,13 +98,6 @@ python src/scripts/run_aug.py
 ```bash
 # Generate comprehensive analysis and visualizations
 python visualization.py
-
-# Or run individual components
-python src/utils/generate_report.py
-python src/plotting/plot_final_comparison.py
-python src/plotting/plot_balanced_comparison.py
-python src/plotting/plot_simple_distribution.py
-```
 
 ### 5. View Results
 
