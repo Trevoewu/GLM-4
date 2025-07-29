@@ -135,7 +135,7 @@ class CMCCDataAugmentation:
         else:
             return 0.0
 
-    def create_generation_prompts(self, class_id: int, examples: List[str], batch_size: int = 10) -> str:
+    def create_generation_prompts(self, class_id: int, examples: List[str], batch_size: int = 3) -> str:
         """为特定类别创建生成提示词"""
         class_name = self.business_types[class_id]
         keywords = self.category_keywords.get(class_id, [])
@@ -175,14 +175,14 @@ class CMCCDataAugmentation:
         return prompt
 
     def call_llm_api(self, prompt: str, api_url: str = None, 
-                     api_key: str = None) -> str:
+                     api_key: str = None, llm_config: dict = None) -> str:
         """调用LLM API生成样本"""
-        # 这里可以接入不同的LLM API
-        # 示例使用OpenAI API格式，你可以根据实际情况修改
+        # 使用配置文件中的参数，而不是硬编码
+        if not llm_config:
+            llm_config = {}
         
         if not api_url:
-            # 使用本地GLM-4服务（假设在8000端口运行）
-            api_url = "http://localhost:8000/v1/chat/completions"
+            api_url = llm_config.get('api_url', "http://localhost:8001/v1/chat/completions")
         
         headers = {
             "Content-Type": "application/json",
@@ -191,13 +191,16 @@ class CMCCDataAugmentation:
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
         
+        # 从配置文件读取所有LLM参数
         data = {
-            "model": "glm-4",
+            "model": llm_config.get('model_name', "glm-4"),
             "messages": [
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.8,
-            "max_tokens": 2000
+            "temperature": llm_config.get('temperature', 0.8),
+            "max_tokens": llm_config.get('max_tokens', 1200),
+            "top_p": llm_config.get('top_p', 0.9),
+            "repetition_penalty": llm_config.get('repetition_penalty', 1.1),
         }
         
         try:
@@ -236,7 +239,8 @@ class CMCCDataAugmentation:
                                  max_retries: int = 5,
                                  api_url: str = None,
                                  api_key: str = None,
-                                 class_specific_targets: Dict[int, int] = None) -> List[Dict]:
+                                 class_specific_targets: Dict[int, int] = None,
+                                 llm_config: dict = None) -> List[Dict]:
         """为少数类别生成合成样本（改进版）"""
         df = pd.read_csv(csv_file)
         synthetic_samples = []
@@ -275,7 +279,7 @@ class CMCCDataAugmentation:
                 
                 while retry_count < max_retries and generated_text is None:
                     try:
-                        generated_text = self.call_llm_api(prompt, api_url, api_key)
+                        generated_text = self.call_llm_api(prompt, api_url, api_key, llm_config)
                         if generated_text:
                             break
                     except Exception as e:
@@ -326,7 +330,8 @@ class CMCCDataAugmentation:
                               max_retries: int = 5,
                               api_url: str = None,
                               api_key: str = None,
-                              class_specific_config: Dict = None):
+                              class_specific_config: Dict = None,
+                              llm_config: dict = None):
         """创建平衡的数据集"""
         print("开始创建平衡数据集...")
         
@@ -358,7 +363,7 @@ class CMCCDataAugmentation:
         # 4. 生成合成样本
         synthetic_samples = self.generate_synthetic_samples(
             original_csv, minority_classes, target_samples_per_class, 
-            batch_size, max_retries, api_url, api_key, class_specific_targets
+            batch_size, max_retries, api_url, api_key, class_specific_targets, llm_config
         )
         
         # 4. 合并原始数据和合成数据
@@ -391,23 +396,12 @@ def main():
     """主函数"""
     augmentor = CMCCDataAugmentation()
     
-    # 配置参数 - 使用正确的文件路径
-    original_train_file = "../data/cmcc-34/train_new.csv"  # 原始数据在cmcc-34目录
-    balanced_train_file = "data/train_balanced.csv"        # 输出到aug/data目录
-    target_samples = 100  # 每个类别目标样本数
-    
-    # API配置（根据你的实际情况修改）
-    api_url = "http://localhost:8001/v1/chat/completions"  # 本地GLM-4服务（更新端口）
-    api_key = None  # 如果需要API key，在这里设置
-    
-    # 创建平衡数据集
-    augmentor.create_balanced_dataset(
-        original_csv=original_train_file,
-        output_csv=balanced_train_file,
-        target_samples_per_class=target_samples,
-        api_url=api_url,
-        api_key=api_key
-    )
+    # 现在所有配置都在 augment_config.yaml 文件中
+    # 请使用 run_augmentation.py 或 src/scripts/run_aug.py 来运行增强
+    print("⚠️  请使用配置文件运行增强系统:")
+    print("   python run_augmentation.py")
+    print("   或: python src/scripts/run_aug.py")
+    print("   所有配置在 augment_config.yaml 中管理")
 
 if __name__ == "__main__":
     main()

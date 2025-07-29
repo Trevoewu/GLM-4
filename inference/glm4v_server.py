@@ -17,7 +17,7 @@ from peft import PeftModelForCausalLM
 from PIL import Image
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
-from transformers import AutoModel, AutoTokenizer, TextIteratorStreamer
+from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 
 
 TORCH_TYPE = (
@@ -371,21 +371,22 @@ if __name__ == "__main__":
 
         with open(model_dir / "adapter_config.json", "r", encoding="utf-8") as file:
             config = json.load(file)
-        model = AutoModel.from_pretrained(
-            config.get("base_model_name_or_path"), device_map="auto", torch_dtype=TORCH_TYPE
+        model = AutoModelForCausalLM.from_pretrained(
+            config.get("base_model_name_or_path"), device_map="auto", torch_dtype=TORCH_TYPE, trust_remote_code=True
         )
         model = PeftModelForCausalLM.from_pretrained(
             model=model,
             model_id=model_dir,
         )
-        tokenizer = AutoTokenizer.from_pretrained(config.get("base_model_name_or_path"), encode_special_tokens=True)
+        tokenizer = AutoTokenizer.from_pretrained(config.get("base_model_name_or_path"), encode_special_tokens=True, trust_remote_code=True)
         model.eval()
     else:
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, encode_special_tokens=True)
-        model = AutoModel.from_pretrained(
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, encode_special_tokens=True, trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(
             MODEL_PATH,
             torch_dtype=TORCH_TYPE,
             device_map="auto",
+            trust_remote_code=True,
         ).eval()
 
     uvicorn.run(app, host="0.0.0.0", port=8001, workers=1)

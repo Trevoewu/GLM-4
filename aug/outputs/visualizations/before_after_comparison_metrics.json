@@ -1,0 +1,32 @@
+{
+  "original": {
+    "total_samples": 12799,
+    "num_classes": 34,
+    "min_samples": 1,
+    "max_samples": 1961,
+    "mean_samples": 376.44117647058823,
+    "std_samples": 498.1210100542231,
+    "imbalance_ratio": 1961.0,
+    "gini_coefficient": 0.6509952523864456,
+    "minority_classes": 13,
+    "ultra_minority_classes": 5
+  },
+  "balanced": {
+    "total_samples": 14996,
+    "num_classes": 34,
+    "min_samples": 40,
+    "max_samples": 1961,
+    "mean_samples": 441.05882352941177,
+    "std_samples": 459.19564849703875,
+    "imbalance_ratio": 49.025,
+    "gini_coefficient": 0.5055701128143976,
+    "minority_classes": 2,
+    "ultra_minority_classes": 0
+  },
+  "improvement": {
+    "sample_increase": 2197,
+    "imbalance_reduction": 40.0,
+    "gini_improvement": 0.14542513957204806,
+    "minority_reduction": 11
+  }
+}

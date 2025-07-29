@@ -180,15 +180,23 @@ class CMCCDataAugmentation:
             "messages": [
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.8,
-            "max_tokens": 2000
+            "temperature": 0.7,  # Slightly lower for more focused responses
+            "max_tokens": 1500,  # Reduced to prevent overly long responses
+            "top_p": 0.9,        # Add nucleus sampling for better performance
         }
         
         try:
-            response = requests.post(api_url, headers=headers, json=data, timeout=60)
+            # Use shorter timeout with proper retry handling
+            response = requests.post(api_url, headers=headers, json=data, timeout=30)
             response.raise_for_status()
             result = response.json()
             return result['choices'][0]['message']['content']
+        except requests.exceptions.Timeout:
+            print(f"API调用超时 (30秒)")
+            return None
+        except requests.exceptions.RequestException as e:
+            print(f"API请求失败: {e}")
+            return None
         except Exception as e:
             print(f"API调用失败: {e}")
             return None
