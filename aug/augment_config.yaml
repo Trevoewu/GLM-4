@@ -15,7 +15,7 @@ augmentation:
   
   # 生成设置
   batch_size: 10                  # 每次生成的样本数（增加到10）
-  max_retries: 5                  # API调用失败时的重试次数（增加到5）
+  max_retries: 3                  # API调用失败时的重试次数
   delay_between_calls: 0.5        # API调用间隔（减少到0.5秒）
   
   # 质量控制
@@ -32,7 +32,7 @@ llm_config:
   
   # 生成参数
   temperature: 0.8                # 生成温度
-  max_tokens: 2000               # 最大生成长度
+  max_tokens: 1000               # 最大生成长度
   top_p: 0.9                     # Top-p采样
   
   # 备用API配置（如果主API不可用）
