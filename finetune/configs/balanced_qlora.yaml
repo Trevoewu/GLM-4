@@ -1,0 +1,63 @@
+data_config:
+  train_file: train_balanced.jsonl
+  # val_file: dev_balanced.jsonl
+  # test_file: test_balanced.jsonl
+  num_proc: 4
+
+combine: True
+freezeV: True
+max_input_length: 1024  # Increased for system prompt
+max_output_length: 256  # Reduced since we only need intent output
+# swanlab: "local"  # set to local if don`t use cloud
+
+training_args:
+  # see `transformers.Seq2SeqTrainingArguments`
+  output_dir: ./output/cmcc34_qlora_balanced_system_prompt
+  max_steps: 5000
+  # needed to be fit for the dataset
+  learning_rate: 2e-4
+  # settings for data loading
+  per_device_train_batch_size: 4
+  dataloader_num_workers: 4
+  remove_unused_columns: false
+  # settings for saving checkpoints
+  save_strategy: steps
+  save_steps: 500
+  # settings for logging
+  log_level: info
+  logging_strategy: steps
+  logging_steps: 50
+  run_name: "glm4-cmcc34-qlora-balanced-system-prompt"
+  # settings for evaluation
+  per_device_eval_batch_size: 4
+  eval_strategy: "no"
+  # eval_steps: 500
+  # settings for optimizer
+  # adam_epsilon: 1e-6
+  # uncomment the following line to detect nan or inf values
+  # debug: underflow_overflow
+  predict_with_generate: true
+  # QLoRA specific settings
+  bf16: true
+  gradient_checkpointing: true
+  # see `transformers.GenerationConfig`
+  generation_config:
+    max_new_tokens: 128  # Reduced since we only need intent output
+  # set your absolute deepspeed path here
+  # deepspeed: configs/ds_zero_3.json
+  # deepspeed: configs/ds_zero_2.json
+
+peft_config:
+  peft_type: LORA
+  task_type: CAUSAL_LM
+  r: 16
+  lora_alpha: 64
+  lora_dropout: 0.1
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
+
+# QLoRA specific quantization config
+quantization_config:
+  load_in_4bit: true
+  bnb_4bit_compute_dtype: "bfloat16"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_quant_type: "nf4"

@@ -1,6 +1,6 @@
 # GLM-4 Fine-tuning for CMCC-34 Intent Classification
 
-This repository contains a complete pipeline for fine-tuning GLM-4-9B on the CMCC-34 dataset for intent classification using QLoRA (Quantized Low-Rank Adaptation). The project includes data preparation, **LLM-based data augmentation**, model training, evaluation, and inference capabilities.
+This repository contains a complete pipeline for fine-tuning GLM-4-9B on the CMCC-34 dataset for intent classification using QLoRA (Quantized Low-Rank Adaptation). The project includes data preparation, **LLM-baseddata augmentation**, model training, evaluation, and inference capabilities.
 
 ## 🚀 Quick Start
 
@@ -19,18 +19,13 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 ```bash
 # Convert raw CSV data to GLM-4 format with system prompts
-cd finetune/data/cmcc-34
+cd data/cmcc-34
 python convert_data.py
 
 # Run LLM-based data augmentation to address class imbalance
-cd ../../aug
+cd ../aug
 python run_augmentation.py --dry-run    # Test configuration
 python run_augmentation.py              # Run full augmentation
-
-# Regenerate dataset if needed
-cd ../finetune/data/cmcc-34
-python regenerate_dataset.py
-```
 
 ### 3. Model Training
 
@@ -45,7 +40,7 @@ python train_cmcc34_system_prompt.py
 ```bash
 # Quick evaluation (100 samples)
 cd evaluation
-python evaluate.py --quick --samples 100
+python evaluate.py --q
 
 # Full evaluation
 python evaluate.py --model-path ../finetune/output/cmcc34_qlora_system_prompt/checkpoint-5000
@@ -61,86 +56,27 @@ python trans_cli_finetuned_demo.py
 # Web interface
 python trans_web_finetuned_demo.py
 
-# GLM-4V Vision model
-python trans_cli_vision_demo.py
-
-# Batch inference
-python trans_batch_demo.py
-```
-
-## 📁 Project Structure
-
-```
-GLM-4/
-├── aug/                           # 🆕 LLM-based Data Augmentation
-│   ├── run_augmentation.py       # Main augmentation runner
-│   ├── data_augmentation.py      # GLM-4 augmentation logic
-│   ├── augment_config.yaml       # Configuration
-│   ├── visualization.py          # Analysis and plotting
-│   ├── outputs/                  # Generated datasets and plots
-│   └── src/                      # Core augmentation modules
-├── finetune/                     # Fine-tuning pipeline
-│   ├── configs/                  # Training configurations
-│   │   └── cmcc34_qlora_system_prompt.yaml
-│   ├── data/                     # Data processing scripts
-│   │   └── cmcc-34/
-│   │       ├── convert_data.py
-│   │       ├── regenerate_dataset.py
-│   │       ├── train.jsonl
-│   │       └── test.jsonl
-│   ├── output/                   # Training outputs
-│   │   └── cmcc34_qlora_system_prompt/
-│   └── train_cmcc34_system_prompt.py
-├── evaluation/                   # Model evaluation
-│   ├── evaluate.py              # Main evaluation script
-│   └── output/                  # Evaluation results
-├── inference/                    # Model inference
-│   ├── trans_cli_finetuned_demo.py
-│   ├── trans_web_finetuned_demo.py
-│   ├── trans_cli_vision_demo.py # 🆕 GLM-4V support
-│   ├── trans_batch_demo.py      # 🆕 Batch inference
-│   ├── glm4v_server.py          # 🆕 GLM-4V API server
-│   └── test_finetuned_model.py
-├── demo/                         # Demo applications
-├── resources/                    # Additional resources
-└── README.md
-```
-
 ## 🆕 Data Augmentation Pipeline
 
 ### Problem Statement
+
 The CMCC-34 dataset suffers from severe class imbalance:
 - **Most frequent class**: 1,961 samples (Class 0: 咨询业务规定)
 - **Least frequent classes**: 1 sample each (Class 32: 办理销户/重开, Class 33: 咨询电商货品信息)
 - **Imbalance ratio**: 1961:1
 - **Gini coefficient**: 0.651 (high inequality)
 
-### Key Features
-- **GLM-4 Integration**: Uses GLM-4 model for high-quality synthetic sample generation
-- **Smart Targeting**: Class-specific sample targets based on severity
-- **Quality Control**: Length, similarity, and keyword validation
-- **Visual Analytics**: Comprehensive comparison plots and distributions
-- **Structured Output**: All results organized in `output/` directory
 
 ### Usage
 ```bash
 # Start GLM-4 API server
-cd aug
-python src/scripts/api_server.py
+cd inference
+python glm4v_server.py
 
 # Run augmentation
+cd ../aug
 python run_augmentation.py --dry-run    # Test configuration
 python run_augmentation.py              # Run full augmentation
-
-# View results
-ls -la outputs/
-cat outputs/reports/data_augmentation_report.txt
-```
-
-### Expected Results
-- **Dataset Growth**: ~3,000+ new synthetic samples
-- **Gini Coefficient**: 0.651 → ~0.400 (significant improvement)
-- **Imbalance Ratio**: 1961:1 → ~10:1 (dramatic reduction)
 
 ## 🔧 Configuration
 
@@ -150,19 +86,17 @@ The training uses QLoRA with the following key parameters:
 
 - **Base Model**: GLM-4-9B-0414
 - **Quantization**: 4-bit (QLoRA)
-- **LoRA Rank**: 64
-- **LoRA Alpha**: 128
+- **LoRA Rank**: 16
+- **LoRA Alpha**: 64
 - **Learning Rate**: 2e-4
 - **Batch Size**: 4
 - **Max Steps**: 5000
-- **System Prompt**: Optimized for intent classification
 
 ### Evaluation Configuration
 
 - **Test Dataset**: CMCC-34 test set
 - **Metrics**: Accuracy, F1-Macro, F1-Weighted
 - **Output**: Failed predictions, confusion matrix, detailed analysis
-- **Retry Logic**: Automatic retry with content truncation
 
 ## 📊 Model Performance
 

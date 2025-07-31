@@ -32,7 +32,7 @@ llm_config:
   
   # 生成参数
   temperature: 0.8                # 生成温度
-  max_tokens: 1000               # 最大生成长度
+  max_tokens: 2000                # 最大生成长度
   top_p: 0.9                     # Top-p采样
   
   # 备用API配置（如果主API不可用）

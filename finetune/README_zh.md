@@ -25,7 +25,7 @@ Read this in [English](README)
 |-----------------------|----------------------|------------------------------|
 | GLM-4-9B-0414     | lora                 | 22G (Each GPU, Need 1 GPU)   |
 | GLM-4-9B-0414     | SFT (Zero3 method)   | 55G (Each GPU, Need 4 GPUs)  |
-| GLM-4-9B-0414     | lora                 | 80G (Each GPU, Need 8 GPUs)  |
+| GLM-4-9B-0414     | SFT                 | 80G (Each GPU, Need 8 GPUs)  |
 | GLM-4-32B-0414    | SFT (Zero3 method)   | 80G (Each GPU, Need 16 GPUs) |
 
 + 基于本仓库代码微调
@@ -296,7 +296,7 @@ pip install swanlab
 例如，这就是一个从最后一个保存点继续微调的示例代码
 
 ```shell
-python finetune.py  data/AdvertiseGen/  THUDM/GLM-4-9B-0414  configs/lora.yaml yes
+python finetune.py  ../data/cmcc34/  THUDM/GLM-4-9B-0414  configs/cmcc34_qlora_system_prompt.yaml yes
 ```
 
 ## 使用微调后的模型

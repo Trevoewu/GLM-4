@@ -169,7 +169,7 @@ class SystemPromptEvaluator:
                     max_user_tokens = 2048 - len(self.tokenizer.encode(self.system_prompt))
                     truncated_content = self.tokenizer.decode(
                         self.tokenizer.encode(current_content)[:max_user_tokens], 
-                        skip_special_tokens=True
+                        skip_special_tokens=True,
                     )
                     current_content = truncated_content
                     continue
@@ -641,8 +641,8 @@ def main():
                        help='Quick evaluation with limited samples (default: 100)')
     parser.add_argument('--samples', '-s', type=int, default=100,
                        help='Number of samples for quick evaluation (default: 100)')
-    parser.add_argument('--batch-size', '-b', type=int, default=100,
-                       help='Batch size for evaluation (default: 100)')
+    parser.add_argument('--batch-size', '-b', type=int, default=1000,
+                       help='Batch size for evaluation (default: 1000)')
     parser.add_argument('--output-dir', '-o', type=str, default="output",
                        help='Output directory for results (default: output)')
     parser.add_argument('--model-path', '-m', type=str, 
