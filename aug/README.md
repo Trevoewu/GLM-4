@@ -30,6 +30,7 @@ cd ../aug && python run_augmentation.py              # Run full augmentation
 ```bash
 # Generate comprehensive analysis and visualizations
 python visualization.py
+```
 
 ### 5. Train the model on the balanced dataset
 
