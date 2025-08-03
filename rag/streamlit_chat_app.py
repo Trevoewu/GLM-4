@@ -11,6 +11,7 @@ sys.path.append(str(project_root))
 
 from rag_system import RAGSystem
 import config
+from prompts import COMPLIANCE_ADVISOR_PROMPT
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -90,8 +91,8 @@ def display_retrieval_process(rag_system, prompt, top_k):
 
 def main():
     # 主标题
-    st.title("🤖 RAG智能问答系统")
-    st.markdown("基于检索增强生成的智能问答系统，为您提供准确、可靠的答案")
+    st.title("🔍 合规顾问RAG系统演示")
+    st.markdown("专业的合规顾问系统，帮助查询政策、程序和法规，检查企业活动合规性")
     
     # 侧边栏
     with st.sidebar:
@@ -166,14 +167,7 @@ def main():
                             }
                             for doc in relevant_docs
                         ]
-                        prompt_text = f"""基于以下上下文信息，请回答用户的问题。如果上下文中没有相关信息，请说明无法从提供的文档中找到答案。
-
-上下文信息：
-{context}
-
-问题：{prompt}
-
-请提供准确、详细的回答："""
+                        prompt_text = COMPLIANCE_ADVISOR_PROMPT.format(context=context, question=prompt)
                         
                         # 模拟流式输出
                         try:
@@ -247,6 +241,8 @@ def main():
         if st.button("🗑️ 清空对话", use_container_width=True):
             st.session_state.messages = []
             st.rerun()
+    
+
 
 if __name__ == "__main__":
     main() 

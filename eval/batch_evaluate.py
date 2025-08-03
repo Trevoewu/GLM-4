@@ -67,7 +67,7 @@ def main():
                        help="Output file path")
     parser.add_argument("--max_workers", type=int, default=500, 
                        help="Maximum number of parallel workers (DeepSeek has no rate limits)")
-    
+    parser.add_argument("--model", default="deepseek-chat", help="Model to use")
     args = parser.parse_args()
     
     # Create evaluator

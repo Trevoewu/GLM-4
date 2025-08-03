@@ -4,6 +4,7 @@ Batch evaluation script for synthetic data quality using DeepSeek API.
 Uses parallel processing to speed up evaluation.
 """
 
+from ast import parse
 import json
 import csv
 import time
@@ -19,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 class BatchDialogueEvaluator:
     """Batch evaluator for synthetic dialogue quality using DeepSeek."""
     
-    def __init__(self, api_key: str, model: str = "deepseek-chat", max_workers: int = 5):
+    def __init__(self, api_key: str, model: str = "deepseek-chat", max_workers: int = 10):
         self.api_key = api_key
         self.model = model
         self.api_url = "https://api.deepseek.com/v1/chat/completions"
@@ -328,11 +329,11 @@ def main():
                        help="Output file path")
     parser.add_argument("--max_workers", type=int, default=5, 
                        help="Maximum number of parallel workers")
-    
+    parser.add_argument("--model", default="deepseek-chat", help="Model to use")
     args = parser.parse_args()
     
     # Create evaluator
-    evaluator = BatchDialogueEvaluator(args.api_key, max_workers=args.max_workers)
+    evaluator = BatchDialogueEvaluator(args.api_key, model=args.model, max_workers=args.max_workers)
     
     # Load data
     print(f"Loading synthetic data from {args.data_file}...")

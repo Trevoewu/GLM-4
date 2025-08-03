@@ -10,6 +10,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from local_llm_client import LocalGLM4Client, MockLocalLLM
 from config import MODEL_PATH, EMBEDDING_MODEL, EMBEDDING_MODEL_PATH, LOCAL_GLM4_URL, VECTOR_STORE_PATH, OFFLINE_MODE
+from prompts import COMPLIANCE_ADVISOR_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -80,14 +81,7 @@ class RAGSystem:
             self.load_vector_store()
         
         # 创建提示模板
-        template = """基于以下上下文信息，请回答用户的问题。如果上下文中没有相关信息，请说明无法从提供的文档中找到答案。
-
-上下文信息：
-{context}
-
-问题：{question}
-
-请提供准确、详细的回答："""
+        template = COMPLIANCE_ADVISOR_PROMPT
 
         prompt = PromptTemplate(
             template=template,
@@ -119,14 +113,7 @@ class RAGSystem:
                 
                 # 构建提示
                 context = "\n".join([doc.page_content for doc in relevant_docs])
-                prompt = f"""基于以下上下文信息，请回答用户的问题。如果上下文中没有相关信息，请说明无法从提供的文档中找到答案。
-
-上下文信息：
-{context}
-
-问题：{question}
-
-请提供准确、详细的回答："""
+                prompt = COMPLIANCE_ADVISOR_PROMPT.format(context=context, question=question)
                 
                 # 流式调用LLM
                 answer = self.llm._call(prompt, stream=True)
@@ -170,6 +157,32 @@ class RAGSystem:
         # 移除行首行尾空格
         text = text.strip()
         return text
+    
+    def _extract_document_info(self, doc) -> str:
+        """提取文档信息，包括文件名和可能的章节信息"""
+        source_file = doc.metadata.get('source_file', '未知文档')
+        
+        # 尝试从文档内容中提取章节信息
+        content = doc.page_content
+        import re
+        
+        # 查找常见的章节模式
+        chapter_patterns = [
+            r'第(\d+)条',  # 第X条
+            r'第(\d+)章',  # 第X章
+            r'第(\d+)节',  # 第X节
+            r'(\d+\.\d+\.\d+)',  # X.X.X格式
+            r'(\d+\.\d+)',  # X.X格式
+            r'第(\d+)部分',  # 第X部分
+        ]
+        
+        for pattern in chapter_patterns:
+            match = re.search(pattern, content[:500])  # 在前500字符中查找
+            if match:
+                return f"{source_file} {match.group(0)}"
+        
+        # 如果没有找到章节信息，只返回文件名
+        return source_file
     
     def batch_answer_questions(self, questions: List[str]) -> List[Dict[str, Any]]:
         """批量回答问题"""

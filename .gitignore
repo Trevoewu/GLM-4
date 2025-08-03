@@ -3,3 +3,5 @@
 *.idea/
 dataset
 finetune/data/cmcc-34/.*.json
+.gitignore
+rag/dataset/
