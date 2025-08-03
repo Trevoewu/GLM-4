@@ -1,0 +1,38 @@
+nohup: ignoring input
+
+Collecting usage statistics. To deactivate, set browser.gatherUsageStats to false.
+
+
+  You can now view your Streamlit app in your browser.
+
+  URL: http://0.0.0.0:8501
+
+[HAMI-core Msg(584604:139720624379456:libvgpu.c:837)]: Initializing.....
+[HAMI-core Msg(584604:139720624379456:libvgpu.c:856)]: Initialized
+INFO:sentence_transformers.SentenceTransformer:Use pytorch device_name: cuda:0
+INFO:sentence_transformers.SentenceTransformer:Load pretrained SentenceTransformer: /root/.cache/huggingface/hub/models--shibing624--text2vec-base-chinese/snapshots/183bb99aa7af74355fb58d16edf8c13ae7c5433e
+INFO:rag_system:成功连接到本地GLM4服务器
+INFO:faiss.loader:Loading faiss with AVX512 support.
+INFO:faiss.loader:Successfully loaded faiss with AVX512 support.
+INFO:faiss:Failed to load GPU Faiss: name 'GpuIndexIVFFlat' is not defined. Will not load constructor refs for GPU indexes. This is only an error if you're trying to use GPU Faiss.
+INFO:rag_system:向量存储加载成功
+[31m──[0m[31m────────────────────────[0m[31m [0m[1;31mTraceback [0m[1;2;31m(most recent call last)[0m[31m [0m[31m─────────────────────────[0m[31m──[0m
+[31m [0m [2;33m/data/miniconda/envs/glm4/lib/python3.10/site-packages/streamlit/runtime/scriptrunne[0m [31m [0m
+[31m [0m [2;33mr/[0m[1;33mexec_code.py[0m:[94m128[0m in [92mexec_func_with_error_handling[0m                                  [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m [2;33m/data/miniconda/envs/glm4/lib/python3.10/site-packages/streamlit/runtime/scriptrunne[0m [31m [0m
+[31m [0m [2;33mr/[0m[1;33mscript_runner.py[0m:[94m669[0m in [92mcode_to_exec[0m                                               [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m [2;33m/data/glm4/rag/[0m[1;33mstreamlit_chat_app.py[0m:[94m8[0m in [92m<module>[0m                                   [31m [0m
+[31m [0m                                                                                      [31m [0m
+[31m [0m   [2m  5 [0m[94mfrom[0m[90m [0m[4;96mpathlib[0m[90m [0m[94mimport[0m Path                                                       [31m [0m
+[31m [0m   [2m  6 [0m[94mimport[0m[90m [0m[4;96mtime[0m [2m# Added for streamlit_chat_app.py[0m                                  [31m [0m
+[31m [0m   [2m  7 [0m                                                                               [31m [0m
+[31m [0m [31m❱ [0m  8 [2m# 添加项目根目录到Python路径[0m                                                   [31m [0m
+[31m [0m   [2m  9 [0mproject_root = Path([91m__file__[0m).parent                                           [31m [0m
+[31m [0m   [2m 10 [0msys.path.append([96mstr[0m(project_root))                                             [31m [0m
+[31m [0m   [2m 11 [0m                                                                               [31m [0m
+[31m────────────────────────────────────────────────────────────────────────────────────────[0m
+[1;91mModuleNotFoundError: [0mNo module named [32m'plotly'[0m
+  Stopping...
+[HAMI-core Msg(584604:139720686300032:multiprocess_memory_limit.c:498)]: Calling exit handler 584604
