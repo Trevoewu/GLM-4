@@ -169,30 +169,76 @@ def main():
                         ]
                         prompt_text = COMPLIANCE_ADVISOR_PROMPT.format(context=context, question=prompt)
                         
-                        # 模拟流式输出
+                        # Streamlit真正的流式输出
                         try:
-                            # 这里应该调用真正的流式LLM，现在先模拟
-                            answer = rag_system.llm._call(prompt_text)
+                            # 直接调用LLM客户端进行流式输出
+                            from local_llm_client import LocalGLM4Client
+                            client = LocalGLM4Client()
                             
-                            # 模拟逐字显示（保持Markdown格式）
-                            # 将答案按句子分割，保持Markdown格式
-                            sentences = answer.split('。')
-                            full_response = ""
+                            # 构建请求数据
+                            data = {
+                                "model": "glm4-9b",
+                                "messages": [
+                                    {
+                                        "role": "user",
+                                        "content": prompt_text
+                                    }
+                                ],
+                                "temperature": 0.7,
+                                "max_tokens": 2048,
+                                "stream": True
+                            }
                             
-                            for i, sentence in enumerate(sentences):
-                                if sentence.strip():
-                                    full_response += sentence + "。"
-                                    message_placeholder.markdown(full_response + "▌")
-                                    time.sleep(0.2)
+                            # 发送流式请求
+                            response = client.session.post(
+                                f"{client.base_url}/v1/chat/completions",
+                                json=data,
+                                timeout=120,
+                                stream=True
+                            )
                             
-                            # 最终显示完整的Markdown格式答案
-                            message_placeholder.markdown(answer)
+                            if response.status_code == 200:
+                                # 处理流式响应
+                                import json
+                                
+                                for line in response.iter_lines():
+                                    if line:
+                                        line = line.decode('utf-8')
+                                        
+                                        if line.startswith('data: '):
+                                            data = line[6:]
+                                            if data == '[DONE]':
+                                                break
+                                            try:
+                                                json_data = json.loads(data)
+                                                if 'choices' in json_data and len(json_data['choices']) > 0:
+                                                    delta = json_data['choices'][0].get('delta', {})
+                                                    if 'content' in delta:
+                                                        content = delta['content']
+                                                        full_response += content
+                                                        
+                                                        # 更新Streamlit界面
+                                                        message_placeholder.markdown(full_response + "▌")
+                                                        
+                                            except json.JSONDecodeError:
+                                                continue
+                                
+                                # 完成时更新界面
+                                message_placeholder.markdown(full_response)
+                                
+                                # 使用生成的答案
+                                answer = full_response
+                                
+                            else:
+                                # 如果流式请求失败，回退到普通输出
+                                response = rag_system.answer_question(prompt)
+                                answer = response.get("answer", "抱歉，我无法找到相关答案。")
+                                st.markdown(answer)
                             
                         except Exception as e:
                             # 如果流式输出失败，回退到普通输出
                             response = rag_system.answer_question(prompt)
                             answer = response.get("answer", "抱歉，我无法找到相关答案。")
-                            relevant_docs = response.get("relevant_documents", [])
                             st.markdown(answer)
                     else:
                         # 普通输出

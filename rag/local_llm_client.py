@@ -54,6 +54,9 @@ class LocalGLM4Client:
                 "stream": stream
             }
             
+            logger.info(f"发送请求到 {self.base_url}/v1/chat/completions")
+            logger.debug(f"请求数据: {data}")
+            
             # 发送请求，增加超时时间
             response = self.session.post(
                 f"{self.base_url}/v1/chat/completions",
@@ -62,20 +65,32 @@ class LocalGLM4Client:
                 stream=stream
             )
             
+            logger.info(f"收到响应，状态码: {response.status_code}")
+            
             if response.status_code == 200:
                 if stream:
+                    logger.info("开始处理流式响应")
                     return self._handle_stream_response(response)
                 else:
                     result = response.json()
                     if result.get("choices") and len(result["choices"]) > 0:
-                        return result["choices"][0]["message"]["content"]
+                        content = result["choices"][0]["message"]["content"]
+                        logger.info(f"非流式响应完成，长度: {len(content)}")
+                        return content
                     else:
                         logger.error("响应中没有找到choices")
                         return "抱歉，无法生成回复。"
             else:
                 logger.error(f"请求失败，状态码: {response.status_code}")
+                logger.error(f"响应内容: {response.text}")
                 return f"请求失败，状态码: {response.status_code}"
                 
+        except requests.exceptions.Timeout:
+            logger.error("请求超时")
+            return "抱歉，请求超时，请稍后重试。"
+        except requests.exceptions.ConnectionError:
+            logger.error("连接错误")
+            return "抱歉，无法连接到服务器，请检查服务器状态。"
         except Exception as e:
             logger.error(f"生成回复时出错: {e}")
             return f"生成回复时出错: {str(e)}"
@@ -86,13 +101,22 @@ class LocalGLM4Client:
         import sys
         
         full_response = ""
+        
         try:
+            logger.info("开始处理流式响应...")
+            
+            # 设置更短的超时时间
+            response.raw.decode_content = True
+            
             for line in response.iter_lines():
                 if line:
                     line = line.decode('utf-8')
+                    logger.debug(f"收到流式数据: {line}")
+                    
                     if line.startswith('data: '):
                         data = line[6:]  # 移除 'data: ' 前缀
                         if data == '[DONE]':
+                            logger.info("流式响应结束")
                             break
                         try:
                             json_data = json.loads(data)
@@ -101,8 +125,13 @@ class LocalGLM4Client:
                                 if 'content' in delta:
                                     content = delta['content']
                                     full_response += content
+                                    
+                                    # 立即输出，不等待
                                     print(content, end='', flush=True)
-                        except json.JSONDecodeError:
+                                    sys.stdout.flush()  # 强制刷新输出
+                                        
+                        except json.JSONDecodeError as e:
+                            logger.debug(f"JSON解析错误: {e}, 数据: {data}")
                             continue
                     elif line.strip():  # 处理非data行
                         try:
@@ -112,13 +141,20 @@ class LocalGLM4Client:
                                 if 'content' in delta:
                                     content = delta['content']
                                     full_response += content
+                                    
+                                    # 立即输出，不等待
                                     print(content, end='', flush=True)
-                        except json.JSONDecodeError:
+                                    sys.stdout.flush()  # 强制刷新输出
+                                        
+                        except json.JSONDecodeError as e:
+                            logger.debug(f"JSON解析错误: {e}, 数据: {line}")
                             continue
+                            
         except Exception as e:
             logger.error(f"处理流式响应时出错: {e}")
         
         print()  # 换行
+        logger.info(f"流式响应处理完成，总长度: {len(full_response)}")
         return full_response
     
     def test_connection(self) -> bool:

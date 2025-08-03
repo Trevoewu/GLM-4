@@ -118,6 +118,12 @@ class RAGSystem:
                 # 流式调用LLM
                 answer = self.llm._call(prompt, stream=True)
                 print()  # 换行
+                
+                # 如果流式输出返回空，使用普通输出作为备选
+                if not answer or answer.strip() == "":
+                    logger.warning("流式输出返回空，使用普通输出")
+                    result = self.qa_chain({"query": question})
+                    answer = result["result"]
             else:
                 # 普通输出
                 result = self.qa_chain({"query": question})
