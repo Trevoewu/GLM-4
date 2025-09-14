@@ -5,3 +5,8 @@ dataset
 finetune/data/cmcc-34/.*.json
 .gitignore
 rag/dataset/
+
+# Large dataset files
+data/CDrugRed-A-v1/train.json
+data/CDrugRed-A-v1/test.json
+data/CDrugRed-A-v1/*.json
