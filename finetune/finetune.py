@@ -202,6 +202,13 @@ def _load_datasets(
             split=None,
             num_proc=num_proc,
         )
+    elif data_format == ".json":
+        dataset_dct = load_dataset(
+            "json",
+            data_files=data_files,
+            split=None,
+            num_proc=num_proc,
+        )
     else:
         raise NotImplementedError(
             f"Cannot load dataset in the '{data_format}' format.")
