@@ -1,5 +1,5 @@
 data_config:
-  train_file: ../data/CDrugRed-A-v1/medication_prediction_train.json
+  train_file: ../data/CDrugRed-A-v1/train.json
   # val_file: ../data/CDrugRed-A-v1/medication_prediction_test.json
   # test_file: ../data/CDrugRed-A-v1/medication_prediction_test.json
   num_proc: 4
@@ -8,7 +8,7 @@ combine: True
 freezeV: True
 
 
-max_input_length: 8192  
+max_input_length: 1024
 max_output_length: 256  
 # swanlab: "local"  # set to local if don`t use cloud
 
@@ -27,7 +27,7 @@ training_args:
   log_level: info
   logging_strategy: steps
   logging_steps: 50
-  run_name: "glm4-medication-prediction-lora"
+  run_name: "medication-qlora"
   # settings for evaluation
   per_device_eval_batch_size: 4
   eval_strategy: "no"
