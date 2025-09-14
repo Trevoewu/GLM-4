@@ -24,7 +24,7 @@ This will convert the medical data from:
 ### 2. Finetune 
 
 ```bash
-cd finetune
+cd ../finetune
 python finetune.py ../data/CDrugRed-A-v1 THUDM/GLM-4-9B-0414 configs/medication_lora.yaml
 ```
 You could modify the training parameters in configs/medication_lora.yaml
