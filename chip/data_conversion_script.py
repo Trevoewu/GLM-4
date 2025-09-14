@@ -1,7 +1,7 @@
 import json
 from typing import List, Dict, Any
 from pathlib import Path
-from prompt import system_prompt, user_prompt
+from prompt import SYSTEM_PROMPT, USER_PROMPT
 
 def convert_medical_data_for_glm4(input_data: List[Dict], output_file: str):
     """
@@ -13,7 +13,7 @@ def convert_medical_data_for_glm4(input_data: List[Dict], output_file: str):
     """
     
     # Use system prompt from prompt.py
-    SYSTEM_PROMPT = system_prompt.strip()
+    system_prompt = SYSTEM_PROMPT.strip()
 
     converted_data = []
     
@@ -68,7 +68,7 @@ def create_user_prompt(record: Dict) -> str:
     
     # Format the user prompt using the template from prompt.py
     # First replace the template variables, then handle the JSON example
-    prompt = user_prompt.replace('{患者序号}', str(record.get('患者序号', '未知')))
+    prompt = USER_PROMPT.replace('{患者序号}', str(record.get('患者序号', '未知')))
     prompt = prompt.replace('{性别}', str(record.get('性别', '未知')))
     prompt = prompt.replace('{出生日期}', str(record.get('出生日期', '未知')))
     prompt = prompt.replace('{就诊时间}', str(record.get('就诊时间', '未知')))
@@ -86,30 +86,13 @@ def create_user_prompt(record: Dict) -> str:
     return prompt
 
 def create_assistant_response(record: Dict) -> str:
-    """Create assistant response with expected medications and reasoning"""
+    """Create assistant response with expected medications only"""
     
     medications = record.get("出院带药列表", [])
-    diagnoses = record.get("出院诊断", [])
     
-    # Create reasoning based on diagnoses
-    reasoning_parts = []
-    if diagnoses:
-        # Filter out None values and convert to strings
-        clean_diagnoses = [str(d) for d in diagnoses if d is not None]
-        if clean_diagnoses:
-            reasoning_parts.append(f"Based on the discharge diagnoses: {', '.join(clean_diagnoses)}")
-    
-    if medications:
-        reasoning_parts.append(f"Selected {len(medications)} medications to address the patient's conditions and ensure continuity of care.")
-    else:
-        reasoning_parts.append("No specific discharge medications were prescribed for this case.")
-    
-    reasoning = " ".join(reasoning_parts)
-    
-    # Create structured response matching the expected format from prompt.py
+    # Create simple response with only the medication list
     response = {
-        "reasoning": reasoning,
-        "predicted_medications": medications
+        "出院带药列表": medications
     }
     
     return json.dumps(response, ensure_ascii=False, indent=2)
@@ -157,10 +140,10 @@ def load_jsonl_data(file_path: str) -> List[Dict]:
 
 # Example usage
 if __name__ == "__main__":
-    # Convert available datasets
+    # Convert available datasets using absolute paths
     datasets = [
-        ("../data/CDrugRed-A-v1/CDrugRed_train.jsonl", "../data/CDrugRed-A-v1/medication_prediction_train.json"),
-        ("../data/CDrugRed-A-v1/CDrugRed_test-A.jsonl", "../data/CDrugRed-A-v1/medication_prediction_test.json")
+        ("/data/long/glm4/data/CDrugRed-A-v1/CDrugRed_train.jsonl", "/data/long/glm4/data/CDrugRed-A-v1/train.json"),
+        ("/data/long/glm4/data/CDrugRed-A-v1/CDrugRed_test-A.jsonl", "/data/long/glm4/data/CDrugRed-A-v1/test.json")
     ]
     
     for input_file, output_file in datasets:
@@ -170,5 +153,5 @@ if __name__ == "__main__":
     
     print("Data conversion completed!")
     print("Files created:")
-    print("- ../data/CDrugRed-A-v1/medication_prediction_train.json")
-    print("- ../data/CDrugRed-A-v1/medication_prediction_test.json")
+    print("- /data/long/glm4/data/CDrugRed-A-v1/train.json")
+    print("- /data/long/glm4/data/CDrugRed-A-v1/test.json")

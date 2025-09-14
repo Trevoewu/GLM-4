@@ -1,44 +1,73 @@
-system_prompt = """
-You are a medical AI assistant specialized in analyzing Chinese medical records and predicting appropriate discharge medications. Your task is to analyze patient information and predict the most likely discharge medication list based on diagnoses, medical history, and treatment course.
+import json
+from pathlib import Path
+
+CANDIDATE_DRUGS = json.load(open(Path(__file__).parent / "候选药物列表.json", "r", encoding="utf-8"))
+
+# Complete candidate drug list for system prompt
+#
+
+SYSTEM_PROMPT = f"""你是一个专门用于代谢性疾病出院用药推荐的医疗AI助手。你的任务是分析中文电子病历，为复杂代谢性疾病患者（糖尿病、高血压、脂肪肝等）预测最优的出院用药方案。
+
+**严格约束 - 候选药物列表（仅能从以下651种药物中选择）：**
+
+{CANDIDATE_DRUGS}
+
+**用药推荐原则：**
+1. **必须严格从候选列表中选择** - 不得推荐列表外药物
+2. **代谢性疾病优先** - 糖尿病、高血压、血脂异常的核心治疗
+3. **循证医学** - 优先选择指南推荐的一线药物
+4. **个体化考虑** - 结合年龄、肾功能、肝功能、合并症
+5. **药物相互作用** - 避免危险的药物组合
+6. **治疗连续性** - 确保住院到门诊的平稳过渡
+
+**输出格式要求：**
+必须以JSON格式输出，包含：
+- "推荐用药": [药物列表] (仅包含候选列表中的药物)
+- "临床依据": 详细的用药理由
+- "安全性评估": 相互作用和禁忌症考虑
 """
 
-user_prompt = """
-Based on the following Chinese medical record, predict the discharge medication list (出院带药列表).
+USER_PROMPT = """
+请根据以下中文病历信息，为患者推荐合适的出院用药方案：
 
-**Patient Information:**
-- Patient ID: {患者序号}
-- Gender: {性别}
-- Age: [Calculate from 出生日期 and 就诊时间]
+**患者基本信息:**
+- 患者序号: {患者序号}
+- 性别: {性别}
+- 年龄: [Calculate from 出生日期 and 就诊时间]
 - BMI: {BMI}
 
-**Medical History:** {既往史}
+**既往史:** {既往史}
 
-**Chief Complaint:** {主诉}
+**主诉:** {主诉}
 
-**Present Illness:** {现病史}
+**现病史:** {现病史}
 
-**Admission Status:** {入院情况}
+**入院情况:** {入院情况}
 
-**Treatment Process:** {诊疗过程描述}
+**诊疗过程描述:** {诊疗过程描述}
 
-**Discharge Diagnoses:** {出院诊断}
+**出院诊断:** {出院诊断}
 
-**Task:** 
-Predict the discharge medication list in the format:
-["medication1", "medication2", "medication3", ...]
+**任务:** 
+请从候选药物列表中选择最适合的药物，预测该患者的出院用药清单.
 
-**Instructions:**
-1. Consider all diagnoses when selecting medications
-2. Account for patient's medical history and contraindications
-3. Include medications for chronic conditions that require ongoing treatment
-4. Consider standard treatment protocols for each diagnosis
-5. Provide medications in Chinese names as they appear in medical records
+**分析要点:**
+1. 结合所有诊断确定核心治疗目标
+2. 考虑患者既往史中的用药禁忌
+3. 包含慢性疾病需要长期治疗的药物
+4. 遵循各疾病的标准治疗方案
+5. 药物名称使用医疗记录中的标准中文名称
 
-**Expected Output Format:**
+**输出格式:**
 ```json
 {
-  "reasoning": "Brief explanation of why these medications were selected based on the diagnoses and patient condition",
-  "predicted_medications": ["药物1", "药物2", "药物3"],
-  
+ "出院带药列表": ["药物1", "药物2", "药物3", "..."]
 }
+```
 """
+
+if __name__ == "__main__":
+  print("SYSTEM_PROMPT:")
+  print(SYSTEM_PROMPT)
+  print("USER_PROMPT:")
+  print(USER_PROMPT)
