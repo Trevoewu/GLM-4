@@ -38,16 +38,16 @@ class RAGSystem:
         else:
             self.embeddings = HuggingFaceEmbeddings(model_name=model_name)
         
-        # 初始化LLM
+        # 初始化LLM（不再使用静默回退，连接失败时直接报错）
         if use_local_glm4:
-            # 使用本地GLM4模型
             glm4_client = LocalGLM4Client()
             if glm4_client.test_connection():
                 logger.info("成功连接到本地GLM4服务器")
                 self.llm = MockLocalLLM(client=glm4_client)
             else:
-                logger.warning("无法连接到本地GLM4服务器，使用模拟LLM")
-                self.llm = MockLocalLLM()
+                error_msg = f"无法连接到本地GLM4服务器: {LOCAL_GLM4_URL}。请确认服务器已在该端口运行。"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
         elif openai_api_key:
             self.llm = ChatOpenAI(
                 model_name=llm_model,
@@ -55,8 +55,7 @@ class RAGSystem:
                 openai_api_key=openai_api_key
             )
         else:
-            # 使用模拟LLM
-            self.llm = MockLocalLLM()
+            raise RuntimeError("未提供可用的LLM配置。请启用本地GLM4或提供OpenAI API Key。")
         
         self.vector_store = None
         self.qa_chain = None
@@ -198,19 +197,6 @@ class RAGSystem:
             results.append(result)
         return results
 
-class MockLLM:
-    """模拟LLM，用于测试"""
-    
-    def __call__(self, prompt: str) -> str:
-        """模拟LLM响应"""
-        if "上市公司" in prompt and "监管" in prompt:
-            return "根据相关法律法规，上市公司需要遵守严格的监管要求，包括信息披露、公司治理、财务报告等方面的规定。"
-        elif "信息披露" in prompt:
-            return "信息披露是上市公司的重要义务，包括定期报告和临时报告，确保投资者能够及时、准确、完整地了解公司信息。"
-        elif "独立董事" in prompt:
-            return "独立董事是上市公司治理结构的重要组成部分，负责监督公司运作，保护中小股东利益，确保公司合规经营。"
-        else:
-            return "根据提供的文档内容，我可以为您提供相关信息。请具体说明您想了解的法律法规问题。"
 
 def main():
     """主函数 - 测试RAG系统"""

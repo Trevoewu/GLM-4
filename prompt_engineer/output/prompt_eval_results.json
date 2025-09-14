@@ -1,0 +1,31 @@
+{
+  "model": "glm4-9b",
+  "base_url": "http://127.0.0.1:8001",
+  "dataset": "/data/glm4/data/cmcc-34/test_new.csv",
+  "labels": [
+    "办理",
+    "投诉",
+    "咨询"
+  ],
+  "metrics": {
+    "zero_shot": {
+      "accuracy": 0.66625,
+      "macro_f1": 0.6008207556392716,
+      "total": 4000,
+      "invalid_pred": 0
+    },
+    "few_shot": {
+      "accuracy": 0.688,
+      "macro_f1": 0.6458259797132556,
+      "total": 4000,
+      "invalid_pred": 0
+    },
+    "cot": {
+      "accuracy": 0.65525,
+      "macro_f1": 0.577074600388887,
+      "total": 4000,
+      "invalid_pred": 0
+    }
+  },
+  "timestamp": 1754718124
+}

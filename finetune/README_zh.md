@@ -268,7 +268,7 @@ OMP_NUM_THREADS=1 torchrun --standalone --nnodes=1 --nproc_per_node=8  finetune_
 通过以下代码执行 **单机单卡** 运行。
 
 ```shell
-python finetune.py  data/AdvertiseGen/  THUDM/GLM-4-9B-0414  configs/lora.yaml # For Chat Fine-tune
+python finetune.py  ../data/filtered/  THUDM/GLM-4-9B-0414  configs/filtered_balanced_qlora.yaml # For CMCC-34 Fine-tune
 python finetune_vision.py  data/CogVLM-311K/  THUDM/glm-4v-9b configs/lora.yaml # For VQA Fine-tune
 ```
 

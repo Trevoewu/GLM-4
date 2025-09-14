@@ -646,7 +646,7 @@ def main():
     parser.add_argument('--output-dir', '-o', type=str, default="output",
                        help='Output directory for results (default: output)')
     parser.add_argument('--model-path', '-m', type=str, 
-                       default="../finetune/output/cmcc34_qlora_system_prompt/checkpoint-5000",
+                       default="../finetune/output/cmcc34-r4-a8/checkpoint-5000",
                        help='Path to fine-tuned model checkpoint')
     parser.add_argument('--test-file', '-t', type=str,
                        default="../data/cmcc-34/test.jsonl",

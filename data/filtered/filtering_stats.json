@@ -1,0 +1,8 @@
+{
+  "original_train_samples": 12799,
+  "original_dev_samples": 3200,
+  "filtered_synthetic_samples": 906,
+  "combined_samples": 13705,
+  "quality_threshold": 8.0,
+  "confidence_threshold": 0.8
+}

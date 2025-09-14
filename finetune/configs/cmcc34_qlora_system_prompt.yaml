@@ -1,33 +1,33 @@
 data_config:
   train_file: train.jsonl
-  val_file: dev.jsonl
+  # val_file: dev.jsonl
   test_file: test.jsonl
   num_proc: 4
 
 combine: True
 freezeV: True
 max_input_length: 1024  # Increased for system prompt
-max_output_length: 256  # Reduced since we only need intent output
+max_output_length: 100  # Reduced since we only need intent output
 # swanlab: "local"  # set to local if don`t use cloud
 
 training_args:
   # see `transformers.Seq2SeqTrainingArguments`
-  output_dir: ./output/cmcc34_qlora_system_prompt
+  output_dir: ./output/cmcc34-r4-a8
   max_steps: 5000
   # needed to be fit for the dataset
-  learning_rate: 2e-4
+  learning_rate: 1e-4
   # settings for data loading
   per_device_train_batch_size: 4
   dataloader_num_workers: 4
   remove_unused_columns: false
   # settings for saving checkpoints
   save_strategy: steps
-  save_steps: 500
+  save_steps: 1000
   # settings for logging
   log_level: info
   logging_strategy: steps
   logging_steps: 50
-  run_name: "glm4-cmcc34-qlora-system-prompt"
+  run_name: "glm4-cmcc34-r4-a8"
   # settings for evaluation
   per_device_eval_batch_size: 4
   eval_strategy: "no"
@@ -49,11 +49,12 @@ training_args:
 
 peft_config:
   peft_type: LORA
-  task_type: CAUSAL_LM
-  r: 16
-  lora_alpha: 64
+  r: 4
+  lora_alpha: 8
   lora_dropout: 0.1
-  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
+  target_modules: ["q_proj", "v_proj"]
+  task_type: 'SEQ_CLS'
+  bias: "none"
 
 # QLoRA specific quantization config
 quantization_config:

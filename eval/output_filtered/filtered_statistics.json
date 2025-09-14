@@ -1,0 +1,26 @@
+{
+  "total_filtered_samples": 906,
+  "avg_quality_score": 8.658940397350994,
+  "avg_confidence": 0.9103752759381842,
+  "min_quality_score": 8,
+  "max_quality_score": 9,
+  "min_confidence": 0.8,
+  "max_confidence": 0.95,
+  "label_distribution": {
+    "办理下载/设置": 123,
+    "办理销户/重开": 137,
+    "咨询（含查询）宽带覆盖范围": 50,
+    "咨询（含查询）工单处理结果": 55,
+    "办理补换卡": 74,
+    "咨询（含查询）电商货品信息": 115,
+    "办理缴费": 103,
+    "办理移机/装机/拆机": 42,
+    "咨询（含查询）号码状态": 74,
+    "办理打印/邮寄": 66,
+    "咨询（含查询）使用方式": 67
+  },
+  "filter_thresholds": {
+    "quality_threshold": 8.0,
+    "confidence_threshold": 0.8
+  }
+}

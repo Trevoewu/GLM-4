@@ -160,7 +160,18 @@ class LocalGLM4Client:
     def test_connection(self) -> bool:
         """测试连接"""
         try:
-            response = self.session.get(f"{self.base_url}/v1/models", timeout=10)
+            # Use a minimal chat completion as health check since some servers
+            # don't implement /v1/models.
+            payload = {
+                "model": "glm4-9b",
+                "messages": [{"role": "user", "content": "ping"}],
+                "max_tokens": 1,
+                "temperature": 0.0,
+                "stream": False,
+            }
+            response = self.session.post(
+                f"{self.base_url}/v1/chat/completions", json=payload, timeout=5
+            )
             return response.status_code == 200
         except Exception as e:
             logger.error(f"连接测试失败: {e}")
@@ -209,14 +220,9 @@ class MockLocalLLM(BaseLanguageModel):
             return self._get_fallback_response(prompt_str)
 
     def _get_fallback_response(self, prompt: str) -> str:
-        if "上市公司" in prompt and "监管" in prompt:
-            return "根据相关法律法规，上市公司需要遵守严格的监管要求，包括信息披露、公司治理、财务报告等方面的规定。"
-        elif "信息披露" in prompt:
-            return "信息披露是上市公司的重要义务，包括定期报告和临时报告，确保投资者能够及时、准确、完整地了解公司信息。"
-        elif "独立董事" in prompt:
-            return "独立董事是上市公司治理结构的重要组成部分，负责监督公司运作，保护中小股东利益，确保公司合规经营。"
-        else:
-            return "根据提供的文档内容，我可以为您提供相关信息。请具体说明您想了解的法律法规问题。"
+        raise RuntimeError(
+            "本地GLM4服务器不可用且未配置其他LLM。请启动服务器或提供OpenAI配置。"
+        )
 
     # 新版LangChain要求的抽象方法补全
     def predict(self, text: str, **kwargs: Any) -> str:
