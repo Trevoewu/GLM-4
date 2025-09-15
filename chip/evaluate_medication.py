@@ -202,11 +202,11 @@ class MedicationEvaluator:
         with torch.no_grad():
             outputs = self.model.generate(
                 **model_inputs,
-                max_new_tokens=1024,
-                do_sample=True,
+                max_new_tokens=128,
+                do_sample=False, # no sampling for medication prediction
                 top_p=0.8,
                 temperature=0.6,
-                repetition_penalty=1.15,
+                repetition_penalty=1.1,
                 eos_token_id=self.model.config.eos_token_id,
                 pad_token_id=self.tokenizer.pad_token_id,
             )
@@ -274,7 +274,7 @@ class MedicationEvaluator:
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate medication prediction model on dev set")
-    parser.add_argument("--data-file", type=str, default="../data/CDrugRed-A-v1/train.json",
+    parser.add_argument("--data-file", type=str, default="../data/CDrugRed-A-v1/dev.json",
                         help="Path to dev JSON file with ground-truth assistant outputs")
     parser.add_argument("--model-path", type=str, default="../finetune/output/medication_prediction_model",
                         help="Path to finetuned adapter directory")

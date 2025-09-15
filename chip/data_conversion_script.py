@@ -138,6 +138,38 @@ def load_jsonl_data(file_path: str) -> List[Dict]:
                 data.append(json.loads(line.strip()))
     return data
 
+def create_dev_split(train_file: str, dev_file: str, dev_size: int = 300):
+    """Sample a fixed number of records from train set as dev set and update train set.
+
+    Args:
+        train_file: Path to train.json
+        dev_file: Path to output dev.json
+        dev_size: Number of samples to move from train to dev
+    """
+    with open(train_file, 'r', encoding='utf-8') as f:
+        train_data = json.load(f)
+
+    total_train = len(train_data)
+    if total_train == 0:
+        print(f"No data in {train_file}; skipping dev split.")
+        return
+
+    import random
+    dev_size = min(dev_size, total_train)
+    random.shuffle(train_data)
+    dev_data = train_data[:dev_size]
+    remaining_train = train_data[dev_size:]
+
+    # Write dev and updated train
+    with open(dev_file, 'w', encoding='utf-8') as f:
+        json.dump(dev_data, f, ensure_ascii=False, indent=2)
+
+    with open(train_file, 'w', encoding='utf-8') as f:
+        json.dump(remaining_train, f, ensure_ascii=False, indent=2)
+
+    print(f"Created dev split with {len(dev_data)} records at {dev_file}")
+    print(f"Updated train set size: {len(remaining_train)} (from {total_train})")
+
 # Example usage
 if __name__ == "__main__":
     # Convert available datasets using absolute paths
@@ -151,7 +183,14 @@ if __name__ == "__main__":
         original_data = load_jsonl_data(input_file)
         convert_medical_data_for_glm4(original_data, output_file)
     
+    # Create a 300-sample dev set from train and update train accordingly
+    base_dir = Path("/data/long/glm4/data/CDrugRed-A-v1")
+    train_json = str(base_dir / "train.json")
+    dev_json = str(base_dir / "dev.json")
+    create_dev_split(train_json, dev_json, dev_size=300)
+
     print("Data conversion completed!")
     print("Files created:")
-    print("- /data/long/glm4/data/CDrugRed-A-v1/train.json")
+    print("- /data/long/glm4/data/CDrugRed-A-v1/train.json (updated)")
+    print("- /data/long/glm4/data/CDrugRed-A-v1/dev.json")
     print("- /data/long/glm4/data/CDrugRed-A-v1/test.json")
