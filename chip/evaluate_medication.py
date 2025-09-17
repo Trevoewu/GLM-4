@@ -4,8 +4,14 @@ Evaluate a fine-tuned GLM-4 medication prediction model on a dev set.
 
 Metrics:
 - Example-averaged Jaccard (IoU) over medication sets
-- Micro F1 over the entire label space
+- Macro F1 over individual examples (not micro-averaged)
 - Final score = 0.5 * (Jaccard + F1)
+
+Formulas:
+- Jaccard = (1/N) * Σ(i=1 to N) |y_i ∩ ŷ_i| / |y_i ∪ ŷ_i|
+- F1(y_i, ŷ_i) = 2 * (Precision * Recall) / (Precision + Recall)
+- F1 = (1/N) * Σ(i=1 to N) F1(y_i, ŷ_i)
+- Score = 0.5 * (Jaccard + F1)
 
 Model:
 - Base: THUDM/GLM-4-9B-0414
@@ -69,40 +75,46 @@ def safe_json_extract_medications(text: str) -> List[str]:
 
 
 def jaccard_index(pred: Set[str], gt: Set[str]) -> float:
+    """Compute Jaccard index: |pred ∩ gt| / |pred ∪ gt|"""
     if not pred and not gt:
-        return 1.0
-    if not pred and gt:
-        return 0.0
-    if pred and not gt:
-        return 0.0
+        return 1.0  # Both empty sets are considered identical
+    if not pred or not gt:
+        return 0.0  # One empty, one non-empty: no intersection
     inter = len(pred & gt)
     union = len(pred | gt)
-    return inter / union if union > 0 else 0.0
+    return inter / union
 
 
-def compute_micro_f1(all_preds: List[Set[str]], all_gts: List[Set[str]]) -> float:
-    # Build a vocabulary over all seen labels
-    vocab: Dict[str, int] = {}
-    for s in all_preds + all_gts:
-        for label in s:
-            if label not in vocab:
-                vocab[label] = len(vocab)
-
-    if not vocab:
-        return 1.0  # if no labels anywhere, define as perfect
-
-    num_samples = len(all_preds)
-    num_labels = len(vocab)
-    y_true = np.zeros((num_samples, num_labels), dtype=np.int32)
-    y_pred = np.zeros((num_samples, num_labels), dtype=np.int32)
-
-    for i, (pred_set, gt_set) in enumerate(zip(all_preds, all_gts)):
-        for lab in gt_set:
-            y_true[i, vocab[lab]] = 1
-        for lab in pred_set:
-            y_pred[i, vocab[lab]] = 1
-
-    return f1_score(y_true.reshape(-1), y_pred.reshape(-1), average='binary', zero_division=0)
+def compute_macro_f1(all_preds: List[Set[str]], all_gts: List[Set[str]]) -> float:
+    """Compute macro-averaged F1 score as per the formula:
+    F1(y_i, ŷ_i) = 2 * (Precision * Recall) / (Precision + Recall)
+    F1 = (1/N) * Σ(i=1 to N) F1(y_i, ŷ_i)
+    """
+    if not all_preds:
+        return 0.0
+    
+    f1_scores = []
+    for pred_set, gt_set in zip(all_preds, all_gts):
+        if not pred_set and not gt_set:
+            # Both empty: perfect match
+            f1_scores.append(1.0)
+        elif not pred_set or not gt_set:
+            # One empty, one non-empty: no match
+            f1_scores.append(0.0)
+        else:
+            # Compute precision and recall
+            intersection = len(pred_set & gt_set)
+            precision = intersection / len(pred_set) if pred_set else 0.0
+            recall = intersection / len(gt_set) if gt_set else 0.0
+            
+            # Compute F1 score
+            if precision + recall == 0:
+                f1_score = 0.0
+            else:
+                f1_score = 2 * (precision * recall) / (precision + recall)
+            f1_scores.append(f1_score)
+    
+    return float(np.mean(f1_scores)) if f1_scores else 0.0
 
 
 class MedicationEvaluator:
@@ -254,13 +266,13 @@ class MedicationEvaluator:
         # Metrics
         per_example_j = [jaccard_index(p, t) for p, t in zip(preds, gts)]
         jaccard = float(np.mean(per_example_j)) if per_example_j else 0.0
-        micro_f1 = float(compute_micro_f1(preds, gts)) if preds else 0.0
-        final_score = 0.5 * (jaccard + micro_f1)
+        macro_f1 = float(compute_macro_f1(preds, gts)) if preds else 0.0
+        final_score = 0.5 * (jaccard + macro_f1)
 
         return {
             "num_samples": len(preds),
             "jaccard": jaccard,
-            "micro_f1": micro_f1,
+            "macro_f1": macro_f1,
             "final_score": final_score,
             "details": details,
         }
@@ -305,7 +317,7 @@ def main():
     print("\n================ Medication Dev Evaluation ================")
     print(f"Samples: {results['num_samples']}")
     print(f"Jaccard: {results['jaccard']:.4f}")
-    print(f"Micro F1: {results['micro_f1']:.4f}")
+    print(f"Macro F1: {results['macro_f1']:.4f}")
     print(f"Final Score (0.5*(J+F1)): {results['final_score']:.4f}")
 
     evaluator.save_results(results)
